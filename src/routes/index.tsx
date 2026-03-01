@@ -1,89 +1,65 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
+import { authClient } from '#/lib/auth-client'
+import { Button } from '#/components/ui/button'
 
-export const Route = createFileRoute('/')({ component: App })
+export const Route = createFileRoute('/')({ component: LandingPage })
 
-function App() {
+function LandingPage() {
+  const { data: session } = authClient.useSession()
+  const ctaPath = session?.user ? '/dashboard' : '/login'
+  const ctaLabel = session?.user ? 'Go to Dashboard' : 'Start Building'
+
   return (
-    <main className="page-wrap px-4 pb-8 pt-14">
-      <section className="island-shell rise-in relative overflow-hidden rounded-[2rem] px-6 py-10 sm:px-10 sm:py-14">
-        <div className="pointer-events-none absolute -left-20 -top-24 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(79,184,178,0.32),transparent_66%)]" />
-        <div className="pointer-events-none absolute -bottom-20 -right-20 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(47,106,74,0.18),transparent_66%)]" />
-        <p className="island-kicker mb-3">TanStack Start Base Template</p>
-        <h1 className="display-title mb-5 max-w-3xl text-4xl leading-[1.02] font-bold tracking-tight text-[var(--sea-ink)] sm:text-6xl">
-          Island hours, but for product teams.
-        </h1>
-        <p className="mb-8 max-w-2xl text-base text-[var(--sea-ink-soft)] sm:text-lg">
-          A tropical, breathable app starter with full-document SSR, server
-          functions, streaming, and type-safe routing. Calm on the eyes. Fast in
-          production.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <a
-            href="/blog"
-            className="rounded-full border border-[rgba(50,143,151,0.3)] bg-[rgba(79,184,178,0.14)] px-5 py-2.5 text-sm font-semibold text-[var(--lagoon-deep)] no-underline transition hover:-translate-y-0.5 hover:bg-[rgba(79,184,178,0.24)]"
-          >
-            Explore Posts
-          </a>
-          <a
-            href="https://tanstack.com/router"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-full border border-[rgba(23,58,64,0.2)] bg-white/50 px-5 py-2.5 text-sm font-semibold text-[var(--sea-ink)] no-underline transition hover:-translate-y-0.5 hover:border-[rgba(23,58,64,0.35)]"
-          >
-            Router Guide
-          </a>
+    <main className="flex min-h-[calc(100vh-12rem)] flex-col items-center justify-center px-4 py-24 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-3xl text-center">
+        <div className="mb-8 flex justify-center">
+          <span className="inline-flex items-center border bg-card px-3 py-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Clankr Email
+          </span>
         </div>
-      </section>
-
-      <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        
+        <h1 className="text-balance text-4xl font-bold tracking-tight text-foreground sm:text-6xl">
+          Email infrastructure for autonomous agents.
+        </h1>
+        
+        <p className="mx-auto mt-6 text-balance text-lg text-muted-foreground sm:text-xl">
+          Give your AI agents the ability to securely send, receive, and understand emails. 
+          Built for modern agentic workflows.
+        </p>
+        
+        <div className="mt-10 flex items-center justify-center gap-4">
+          <Button size="lg" className="h-11 rounded-none border-2 border-foreground px-8 text-base shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[6px_6px_0px_0px_rgba(255,255,255,1)] transition-all" asChild>
+            <Link to={ctaPath}>{ctaLabel}</Link>
+          </Button>
+          {!session?.user && (
+            <Button variant="outline" size="lg" className="h-11 rounded-none border-2 border-foreground px-8 text-base bg-transparent hover:bg-muted" asChild>
+              <Link to="/login">Sign In</Link>
+            </Button>
+          )}
+        </div>
+      </div>
+      
+      <div className="mx-auto mt-32 grid max-w-5xl gap-6 sm:grid-cols-3">
         {[
-          [
-            'Type-Safe Routing',
-            'Routes and links stay in sync across every page.',
-          ],
-          [
-            'Server Functions',
-            'Call server code from your UI without creating API boilerplate.',
-          ],
-          [
-            'Streaming by Default',
-            'Ship progressively rendered responses for faster experiences.',
-          ],
-          [
-            'Tailwind Native',
-            'Design quickly with utility-first styling and custom tokens.',
-          ],
-        ].map(([title, desc], index) => (
-          <article
-            key={title}
-            className="island-shell feature-card rise-in rounded-2xl p-5"
-            style={{ animationDelay: `${index * 90 + 80}ms` }}
-          >
-            <h2 className="mb-2 text-base font-semibold text-[var(--sea-ink)]">
-              {title}
-            </h2>
-            <p className="m-0 text-sm text-[var(--sea-ink-soft)]">{desc}</p>
-          </article>
+          {
+            title: 'Dedicated Inboxes',
+            description: 'Provision unique email addresses instantly via API. Perfect for giving every agent or user session their own secure inbox.',
+          },
+          {
+            title: 'Webhook Routing',
+            description: 'Receive real-time webhooks the millisecond an email arrives. Payload includes parsed text, attachments, and thread context.',
+          },
+          {
+            title: 'Agent-Friendly API',
+            description: 'A clean, RESTful API designed specifically for LLMs and autonomous agents to read, compose, and reply to threads.',
+          }
+        ].map((feature, i) => (
+          <div key={i} className="flex flex-col border-2 border-foreground bg-card p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]">
+             <h3 className="mb-2 text-xl font-bold tracking-tight">{feature.title}</h3>
+             <p className="text-muted-foreground">{feature.description}</p>
+          </div>
         ))}
-      </section>
-
-      <section className="island-shell mt-8 rounded-2xl p-6">
-        <p className="island-kicker mb-2">Quick Start</p>
-        <ul className="m-0 list-disc space-y-2 pl-5 text-sm text-[var(--sea-ink-soft)]">
-          <li>
-            Edit <code>src/routes/index.tsx</code> to customize the hero and
-            product narrative.
-          </li>
-          <li>
-            Update <code>src/components/Header.tsx</code> and{' '}
-            <code>src/components/Footer.tsx</code> for brand links.
-          </li>
-          <li>
-            Add routes in <code>src/routes</code> and tweak visual tokens in{' '}
-            <code>src/styles.css</code>.
-          </li>
-        </ul>
-      </section>
+      </div>
     </main>
   )
 }
