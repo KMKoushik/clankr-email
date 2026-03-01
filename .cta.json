@@ -1,0 +1,29 @@
+{
+  "projectName": "clankr-email",
+  "mode": "file-router",
+  "typescript": true,
+  "packageManager": "pnpm",
+  "includeExamples": true,
+  "tailwind": true,
+  "addOnOptions": {
+    "drizzle": {
+      "database": "sqlite"
+    }
+  },
+  "envVarValues": {},
+  "git": true,
+  "routerOnly": false,
+  "version": 1,
+  "framework": "react",
+  "chosenAddOns": [
+    "cloudflare",
+    "drizzle",
+    "form",
+    "oRPC",
+    "shadcn",
+    "t3env",
+    "better-auth",
+    "tanstack-query",
+    "table"
+  ]
+}
