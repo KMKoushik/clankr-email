@@ -94,12 +94,14 @@ Important TS constraints from `tsconfig.json`:
 ```bash
 pnpm db:generate
 pnpm db:migrate
+pnpm db:migrate:remote
 pnpm db:push
 pnpm db:pull
 pnpm db:studio
 ```
 
-Use `.env.local` for local secrets/config (for example `DATABASE_URL`).
+Use `wrangler.jsonc` for local D1 binding config (`d1_databases`).
+Use `.env.local` for optional Drizzle D1 HTTP API credentials (`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID`, `CLOUDFLARE_D1_TOKEN`).
 
 ## Code Style Guidelines
 

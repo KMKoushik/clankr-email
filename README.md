@@ -80,24 +80,29 @@ console.log(env.VITE_APP_TITLE);
 
 Better Auth can work in stateless mode, but to persist user data, add a database:
 
-```typescript
-// src/lib/auth.ts
-import { betterAuth } from "better-auth";
-import { Pool } from "pg";
+This project is configured for Cloudflare D1 + Drizzle.
 
-export const auth = betterAuth({
-  database: new Pool({
-    connectionString: process.env.DATABASE_URL,
-  }),
-  // ... rest of config
-});
-```
+1. Create a D1 database:
 
-Then run migrations:
+   ```bash
+   pnpm wrangler d1 create clankr-email
+   ```
 
-```bash
-pnpm dlx @better-auth/cli migrate
-```
+2. Add the returned `database_id` to `wrangler.jsonc` under `d1_databases`.
+   Keep the binding name as `clankr_email_db` (it matches `src/db/index.ts`).
+
+3. Generate and apply schema migrations:
+
+   ```bash
+   pnpm db:generate
+   pnpm db:migrate
+   ```
+
+4. Apply to the remote D1 instance when ready:
+
+   ```bash
+   pnpm db:migrate:remote
+   ```
 
 
 

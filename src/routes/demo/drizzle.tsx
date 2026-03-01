@@ -122,7 +122,6 @@ function DemoDrizzle() {
             style={{
               background: 'rgba(93, 103, 227, 0.1)',
               borderColor: 'rgba(93, 103, 227, 0.3)',
-              focusRing: 'rgba(93, 103, 227, 0.5)',
             }}
           />
           <button
@@ -148,34 +147,35 @@ function DemoDrizzle() {
             Powered by Drizzle ORM
           </h3>
           <p className="text-sm text-indigo-300/80 mb-4">
-            Next-generation ORM for Node.js & TypeScript with PostgreSQL
+            Next-generation ORM for TypeScript running on Cloudflare D1
           </p>
           <div className="space-y-2 text-sm">
             <p className="text-indigo-200 font-medium">Setup Instructions:</p>
             <ol className="list-decimal list-inside space-y-2 text-indigo-300/80">
               <li>
-                Configure your{' '}
+                Add your D1{' '}
                 <code className="px-2 py-1 rounded bg-black/30 text-purple-300">
-                  DATABASE_URL
+                  database_id
                 </code>{' '}
-                in .env.local
+                in <code className="px-2 py-1 rounded bg-black/30 text-purple-300">wrangler.jsonc</code>
+                {' '}(binding: <code className="px-2 py-1 rounded bg-black/30 text-purple-300">clankr_email_db</code>)
               </li>
               <li>
                 Run:{' '}
                 <code className="px-2 py-1 rounded bg-black/30 text-purple-300">
-                  pnpm dlx drizzle-kit generate
+                  pnpm db:generate
                 </code>
               </li>
               <li>
                 Run:{' '}
                 <code className="px-2 py-1 rounded bg-black/30 text-purple-300">
-                  pnpm dlx drizzle-kit migrate
+                  pnpm db:migrate
                 </code>
               </li>
               <li>
                 Optional:{' '}
                 <code className="px-2 py-1 rounded bg-black/30 text-purple-300">
-                  pnpm dlx drizzle-kit studio
+                  pnpm db:migrate:remote
                 </code>
               </li>
             </ol>

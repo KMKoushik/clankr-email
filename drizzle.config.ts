@@ -3,11 +3,22 @@ import { defineConfig } from 'drizzle-kit'
 
 config({ path: ['.env.local', '.env'] })
 
+const accountId = process.env.CLOUDFLARE_ACCOUNT_ID
+const databaseId = process.env.CLOUDFLARE_DATABASE_ID
+const token = process.env.CLOUDFLARE_D1_TOKEN
+
 export default defineConfig({
   out: './drizzle',
   schema: './src/db/schema.ts',
   dialect: 'sqlite',
-  dbCredentials: {
-    url: process.env.DATABASE_URL,
-  },
+  ...(accountId && databaseId && token
+    ? {
+        driver: 'd1-http',
+        dbCredentials: {
+          accountId,
+          databaseId,
+          token,
+        },
+      }
+    : {}),
 })
