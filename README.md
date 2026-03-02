@@ -25,6 +25,51 @@ This project uses [Vitest](https://vitest.dev/) for testing. You can run the tes
 pnpm test
 ```
 
+## Agent Inbox API
+
+This project now includes a thread-first email inbox API for agents.
+
+### Address model
+
+- Canonical address per inbox: `inbox_id@clankr.email` (immutable)
+- Optional alias: `custom_name@clankr.email` (unique if available)
+
+### Core endpoints
+
+- `GET /api/inboxes` - list user inboxes
+- `POST /api/inboxes` - create inbox, optionally with `customName`
+- `POST /api/inboxes/:inboxId/aliases` - claim an alias for an inbox
+- `GET /api/inboxes/:inboxId/threads` - list inbox threads
+- `GET /api/threads/:threadId/messages` - list thread messages
+- `POST /api/inboxes/:inboxId/send` - send new outbound message
+- `POST /api/threads/:threadId/reply` - reply to thread
+- `GET /api/webhooks/subscriptions` - list webhook subscriptions
+- `POST /api/webhooks/subscriptions` - create webhook subscription
+- `DELETE /api/webhooks/subscriptions/:subscriptionId` - disable subscription
+
+### Worker handlers
+
+- `email()` receives inbound email and writes messages + threads
+- `scheduled()` retries failed webhook deliveries
+
+### Webhook security
+
+Webhook events are signed with:
+
+- `x-clankr-timestamp`
+- `x-clankr-event-id`
+- `x-clankr-signature` (HMAC SHA-256 of `timestamp.body`)
+
+### Required Cloudflare bindings
+
+Configured in `wrangler.jsonc`:
+
+- D1: `clankr_email_db`
+- Send Email binding: `EMAIL`
+- Email handler binding: `EMAIL_HANDLER`
+- R2 bucket: `EMAIL_RAW_BUCKET`
+- Cron trigger: every minute (`*/1 * * * *`)
+
 ## Styling
 
 This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
