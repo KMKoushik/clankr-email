@@ -12,7 +12,15 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiInboxesRouteImport } from './routes/api/inboxes'
+import { Route as ApiWebhooksSubscriptionsRouteImport } from './routes/api/webhooks/subscriptions'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiWebhooksSubscriptionsSubscriptionIdRouteImport } from './routes/api/webhooks/subscriptions/$subscriptionId'
+import { Route as ApiThreadsThreadIdReplyRouteImport } from './routes/api/threads/$threadId/reply'
+import { Route as ApiThreadsThreadIdMessagesRouteImport } from './routes/api/threads/$threadId/messages'
+import { Route as ApiInboxesInboxIdThreadsRouteImport } from './routes/api/inboxes/$inboxId/threads'
+import { Route as ApiInboxesInboxIdSendRouteImport } from './routes/api/inboxes/$inboxId/send'
+import { Route as ApiInboxesInboxIdAliasesRouteImport } from './routes/api/inboxes/$inboxId/aliases'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -29,44 +37,154 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiInboxesRoute = ApiInboxesRouteImport.update({
+  id: '/api/inboxes',
+  path: '/api/inboxes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWebhooksSubscriptionsRoute =
+  ApiWebhooksSubscriptionsRouteImport.update({
+    id: '/api/webhooks/subscriptions',
+    path: '/api/webhooks/subscriptions',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWebhooksSubscriptionsSubscriptionIdRoute =
+  ApiWebhooksSubscriptionsSubscriptionIdRouteImport.update({
+    id: '/$subscriptionId',
+    path: '/$subscriptionId',
+    getParentRoute: () => ApiWebhooksSubscriptionsRoute,
+  } as any)
+const ApiThreadsThreadIdReplyRoute = ApiThreadsThreadIdReplyRouteImport.update({
+  id: '/api/threads/$threadId/reply',
+  path: '/api/threads/$threadId/reply',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiThreadsThreadIdMessagesRoute =
+  ApiThreadsThreadIdMessagesRouteImport.update({
+    id: '/api/threads/$threadId/messages',
+    path: '/api/threads/$threadId/messages',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiInboxesInboxIdThreadsRoute =
+  ApiInboxesInboxIdThreadsRouteImport.update({
+    id: '/$inboxId/threads',
+    path: '/$inboxId/threads',
+    getParentRoute: () => ApiInboxesRoute,
+  } as any)
+const ApiInboxesInboxIdSendRoute = ApiInboxesInboxIdSendRouteImport.update({
+  id: '/$inboxId/send',
+  path: '/$inboxId/send',
+  getParentRoute: () => ApiInboxesRoute,
+} as any)
+const ApiInboxesInboxIdAliasesRoute =
+  ApiInboxesInboxIdAliasesRouteImport.update({
+    id: '/$inboxId/aliases',
+    path: '/$inboxId/aliases',
+    getParentRoute: () => ApiInboxesRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/api/inboxes': typeof ApiInboxesRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/webhooks/subscriptions': typeof ApiWebhooksSubscriptionsRouteWithChildren
+  '/api/inboxes/$inboxId/aliases': typeof ApiInboxesInboxIdAliasesRoute
+  '/api/inboxes/$inboxId/send': typeof ApiInboxesInboxIdSendRoute
+  '/api/inboxes/$inboxId/threads': typeof ApiInboxesInboxIdThreadsRoute
+  '/api/threads/$threadId/messages': typeof ApiThreadsThreadIdMessagesRoute
+  '/api/threads/$threadId/reply': typeof ApiThreadsThreadIdReplyRoute
+  '/api/webhooks/subscriptions/$subscriptionId': typeof ApiWebhooksSubscriptionsSubscriptionIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/api/inboxes': typeof ApiInboxesRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/webhooks/subscriptions': typeof ApiWebhooksSubscriptionsRouteWithChildren
+  '/api/inboxes/$inboxId/aliases': typeof ApiInboxesInboxIdAliasesRoute
+  '/api/inboxes/$inboxId/send': typeof ApiInboxesInboxIdSendRoute
+  '/api/inboxes/$inboxId/threads': typeof ApiInboxesInboxIdThreadsRoute
+  '/api/threads/$threadId/messages': typeof ApiThreadsThreadIdMessagesRoute
+  '/api/threads/$threadId/reply': typeof ApiThreadsThreadIdReplyRoute
+  '/api/webhooks/subscriptions/$subscriptionId': typeof ApiWebhooksSubscriptionsSubscriptionIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/api/inboxes': typeof ApiInboxesRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/webhooks/subscriptions': typeof ApiWebhooksSubscriptionsRouteWithChildren
+  '/api/inboxes/$inboxId/aliases': typeof ApiInboxesInboxIdAliasesRoute
+  '/api/inboxes/$inboxId/send': typeof ApiInboxesInboxIdSendRoute
+  '/api/inboxes/$inboxId/threads': typeof ApiInboxesInboxIdThreadsRoute
+  '/api/threads/$threadId/messages': typeof ApiThreadsThreadIdMessagesRoute
+  '/api/threads/$threadId/reply': typeof ApiThreadsThreadIdReplyRoute
+  '/api/webhooks/subscriptions/$subscriptionId': typeof ApiWebhooksSubscriptionsSubscriptionIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/login' | '/api/auth/$'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/api/inboxes'
+    | '/api/auth/$'
+    | '/api/webhooks/subscriptions'
+    | '/api/inboxes/$inboxId/aliases'
+    | '/api/inboxes/$inboxId/send'
+    | '/api/inboxes/$inboxId/threads'
+    | '/api/threads/$threadId/messages'
+    | '/api/threads/$threadId/reply'
+    | '/api/webhooks/subscriptions/$subscriptionId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/login' | '/api/auth/$'
-  id: '__root__' | '/' | '/dashboard' | '/login' | '/api/auth/$'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/api/inboxes'
+    | '/api/auth/$'
+    | '/api/webhooks/subscriptions'
+    | '/api/inboxes/$inboxId/aliases'
+    | '/api/inboxes/$inboxId/send'
+    | '/api/inboxes/$inboxId/threads'
+    | '/api/threads/$threadId/messages'
+    | '/api/threads/$threadId/reply'
+    | '/api/webhooks/subscriptions/$subscriptionId'
+  id:
+    | '__root__'
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/api/inboxes'
+    | '/api/auth/$'
+    | '/api/webhooks/subscriptions'
+    | '/api/inboxes/$inboxId/aliases'
+    | '/api/inboxes/$inboxId/send'
+    | '/api/inboxes/$inboxId/threads'
+    | '/api/threads/$threadId/messages'
+    | '/api/threads/$threadId/reply'
+    | '/api/webhooks/subscriptions/$subscriptionId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
+  ApiInboxesRoute: typeof ApiInboxesRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiWebhooksSubscriptionsRoute: typeof ApiWebhooksSubscriptionsRouteWithChildren
+  ApiThreadsThreadIdMessagesRoute: typeof ApiThreadsThreadIdMessagesRoute
+  ApiThreadsThreadIdReplyRoute: typeof ApiThreadsThreadIdReplyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -92,6 +210,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/inboxes': {
+      id: '/api/inboxes'
+      path: '/api/inboxes'
+      fullPath: '/api/inboxes'
+      preLoaderRoute: typeof ApiInboxesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/webhooks/subscriptions': {
+      id: '/api/webhooks/subscriptions'
+      path: '/api/webhooks/subscriptions'
+      fullPath: '/api/webhooks/subscriptions'
+      preLoaderRoute: typeof ApiWebhooksSubscriptionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -99,14 +231,91 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/webhooks/subscriptions/$subscriptionId': {
+      id: '/api/webhooks/subscriptions/$subscriptionId'
+      path: '/$subscriptionId'
+      fullPath: '/api/webhooks/subscriptions/$subscriptionId'
+      preLoaderRoute: typeof ApiWebhooksSubscriptionsSubscriptionIdRouteImport
+      parentRoute: typeof ApiWebhooksSubscriptionsRoute
+    }
+    '/api/threads/$threadId/reply': {
+      id: '/api/threads/$threadId/reply'
+      path: '/api/threads/$threadId/reply'
+      fullPath: '/api/threads/$threadId/reply'
+      preLoaderRoute: typeof ApiThreadsThreadIdReplyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/threads/$threadId/messages': {
+      id: '/api/threads/$threadId/messages'
+      path: '/api/threads/$threadId/messages'
+      fullPath: '/api/threads/$threadId/messages'
+      preLoaderRoute: typeof ApiThreadsThreadIdMessagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/inboxes/$inboxId/threads': {
+      id: '/api/inboxes/$inboxId/threads'
+      path: '/$inboxId/threads'
+      fullPath: '/api/inboxes/$inboxId/threads'
+      preLoaderRoute: typeof ApiInboxesInboxIdThreadsRouteImport
+      parentRoute: typeof ApiInboxesRoute
+    }
+    '/api/inboxes/$inboxId/send': {
+      id: '/api/inboxes/$inboxId/send'
+      path: '/$inboxId/send'
+      fullPath: '/api/inboxes/$inboxId/send'
+      preLoaderRoute: typeof ApiInboxesInboxIdSendRouteImport
+      parentRoute: typeof ApiInboxesRoute
+    }
+    '/api/inboxes/$inboxId/aliases': {
+      id: '/api/inboxes/$inboxId/aliases'
+      path: '/$inboxId/aliases'
+      fullPath: '/api/inboxes/$inboxId/aliases'
+      preLoaderRoute: typeof ApiInboxesInboxIdAliasesRouteImport
+      parentRoute: typeof ApiInboxesRoute
+    }
   }
 }
+
+interface ApiInboxesRouteChildren {
+  ApiInboxesInboxIdAliasesRoute: typeof ApiInboxesInboxIdAliasesRoute
+  ApiInboxesInboxIdSendRoute: typeof ApiInboxesInboxIdSendRoute
+  ApiInboxesInboxIdThreadsRoute: typeof ApiInboxesInboxIdThreadsRoute
+}
+
+const ApiInboxesRouteChildren: ApiInboxesRouteChildren = {
+  ApiInboxesInboxIdAliasesRoute: ApiInboxesInboxIdAliasesRoute,
+  ApiInboxesInboxIdSendRoute: ApiInboxesInboxIdSendRoute,
+  ApiInboxesInboxIdThreadsRoute: ApiInboxesInboxIdThreadsRoute,
+}
+
+const ApiInboxesRouteWithChildren = ApiInboxesRoute._addFileChildren(
+  ApiInboxesRouteChildren,
+)
+
+interface ApiWebhooksSubscriptionsRouteChildren {
+  ApiWebhooksSubscriptionsSubscriptionIdRoute: typeof ApiWebhooksSubscriptionsSubscriptionIdRoute
+}
+
+const ApiWebhooksSubscriptionsRouteChildren: ApiWebhooksSubscriptionsRouteChildren =
+  {
+    ApiWebhooksSubscriptionsSubscriptionIdRoute:
+      ApiWebhooksSubscriptionsSubscriptionIdRoute,
+  }
+
+const ApiWebhooksSubscriptionsRouteWithChildren =
+  ApiWebhooksSubscriptionsRoute._addFileChildren(
+    ApiWebhooksSubscriptionsRouteChildren,
+  )
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
+  ApiInboxesRoute: ApiInboxesRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiWebhooksSubscriptionsRoute: ApiWebhooksSubscriptionsRouteWithChildren,
+  ApiThreadsThreadIdMessagesRoute: ApiThreadsThreadIdMessagesRoute,
+  ApiThreadsThreadIdReplyRoute: ApiThreadsThreadIdReplyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
