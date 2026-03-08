@@ -7,9 +7,34 @@ import {
   SendMessageThreadNotFoundError,
   SendMessageValidationError,
 } from '#/lib/email/outbound'
+import {
+  getMessageForUser as getMessageForUserRead,
+  getMessageInputSchema as getMessageReadInputSchema,
+  messageDetailSchema as messageReadDetailSchema,
+} from '#/lib/email/read'
 import { protectedOrpc } from '#/orpc/context'
 
 export const messageRouter = {
+  get: protectedOrpc
+    .route({
+      method: 'GET',
+      path: '/messages/{messageId}',
+      summary: 'Get message',
+    })
+    .input(getMessageReadInputSchema)
+    .output(messageReadDetailSchema)
+    .handler(async ({ context, input }) => {
+      const message = await getMessageForUserRead(context.session.user.id, input.messageId)
+
+      if (!message) {
+        throw new ORPCError('NOT_FOUND', {
+          message: 'Message not found.',
+        })
+      }
+
+      return message
+    }),
+
   send: protectedOrpc
     .route({
       method: 'POST',

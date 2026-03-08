@@ -10,7 +10,7 @@ Build a Cloudflare-native "email for agents" MVP where each signed-up user can o
 2. ~~User can assign one friendly alias per inbox: `name@clankr.email`.~~
 3. ~~Multi-inbox per user is supported from day 1.~~
 4. ~~App can send and receive email through API.~~
-5. App can list threads and read thread messages through API.
+5. ~~App can list threads and read thread messages through API.~~
 6. App supports webhook subscriptions for email events.
 7. Implementation is fully on Cloudflare primitives.
 
@@ -255,9 +255,9 @@ All product APIs are defined as oRPC procedures (single source of truth) in `#/o
 
 ### Thread/message read procedures
 
-- `threads.listByInbox` -> threads by `last_message_at desc`
-- `threads.listMessages` -> paginated messages
-- `messages.get` -> message detail + body fetch strategy
+- ~~`threads.listByInbox` -> threads by `last_message_at desc`~~
+- ~~`threads.listMessages` -> paginated messages~~
+- ~~`messages.get` -> message detail + body fetch strategy~~
 
 ### Webhook procedures
 
@@ -383,9 +383,9 @@ Test work starts in Phase 0 and continues in every phase. New primitives should 
 
 ### Phase 5: Thread procedures
 
-- Implement `threads.listByInbox`, `threads.listMessages`, and `messages.get` procedures against `APP_DB`, with R2 fallback only for oversized bodies if needed.
+- [x] Implement `threads.listByInbox`, `threads.listMessages`, and `messages.get` procedures against `APP_DB`, with R2 fallback only for oversized bodies if needed.
 - Add dashboard UI to manage inboxes and read threads.
-- Write API tests for pagination, ordering, ownership boundaries, body retrieval from D1, and R2 fallback for oversized messages while these procedures are introduced.
+- [x] Write API tests for pagination, ordering, ownership boundaries, body retrieval from D1, and R2 fallback for oversized messages while these procedures are introduced.
 
 ### Phase 6: Webhooks
 
@@ -423,7 +423,7 @@ Tests are written from the beginning of implementation, not collected at the end
 - ~~**Message persistence**: inserts, idempotency behavior, status transitions, and thread `last_message_at` updates.~~
 - ~~**Body storage**: normal bodies read from D1; oversized bodies/raw MIME/attachments written to and retrievable from R2.~~
 - ~~**Outbound sending**: auth checks, payload validation, provider success/failure mapping, reply header generation.~~
-- **Read APIs**: inbox/thread/message listing and detail endpoints with pagination and ownership enforcement.
+- ~~**Read APIs**: inbox/thread/message listing and detail endpoints with pagination and ownership enforcement.~~
 - **Webhooks**: subscription CRUD, event fanout, HMAC signing, retry scheduling, dead-letter behavior.
 
 ### Test data and fixtures
@@ -453,7 +453,7 @@ Minimum validation before merging a feature:
 
 1. ~~Signup auto-creates a working `@clankr.email` inbox.~~
 2. ~~User can create additional inboxes and set one friendly alias per inbox.~~
-3. Inbound emails to default or custom local parts resolve via `APP_DB` and appear in thread/message APIs.
+3. ~~Inbound emails to default or custom local parts resolve via `APP_DB` and appear in thread/message APIs.~~
 4. ~~`messages.send` sends mail from selected inbox and persists status/message IDs in `APP_DB`.~~
 5. ~~Thread grouping works for standard reply chains.~~
 6. Webhook subscribers receive signed events with retries.

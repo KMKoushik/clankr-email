@@ -17,7 +17,7 @@ type StoredObject = {
 type TestHarnessEnv = Pick<Env, 'APP_DB'> & {
   EMAIL: Pick<SendEmail, 'send'>
   EMAIL_EVENTS: Pick<Queue<EmailEvent>, 'send'>
-  EMAIL_STORAGE: Pick<R2Bucket, 'put'>
+  EMAIL_STORAGE: TestR2Bucket
 }
 
 export class TestQueue<T = unknown> {
