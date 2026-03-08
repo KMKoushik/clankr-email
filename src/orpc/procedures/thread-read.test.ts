@@ -96,7 +96,12 @@ describe('thread and message read procedures', () => {
       createdAt: new Date('2026-03-08T11:05:00.000Z'),
     })
 
-    const firstPage = await requestJson(`/api/inboxes/${inboxId}/threads?limit=2`)
+    const firstPage = await requestJson<{
+      nextCursor: {
+        id: string
+        lastMessageAt: string
+      } | null
+    }>(`/api/inboxes/${inboxId}/threads?limit=2`)
 
     expect(firstPage.response.status).toBe(200)
     expect(firstPage.json).toMatchObject({
@@ -120,8 +125,12 @@ describe('thread and message read procedures', () => {
       },
     })
 
+    const threadCursor = firstPage.json.nextCursor
+
+    expect(threadCursor).not.toBeNull()
+
     const secondPage = await requestJson(
-      `/api/inboxes/${inboxId}/threads?limit=2&cursorLastMessageAt=${encodeURIComponent(firstPage.json.nextCursor.lastMessageAt)}&cursorThreadId=${firstPage.json.nextCursor.id}`,
+      `/api/inboxes/${inboxId}/threads?limit=2&cursorLastMessageAt=${encodeURIComponent(threadCursor!.lastMessageAt)}&cursorThreadId=${threadCursor!.id}`,
     )
 
     expect(secondPage.response.status).toBe(200)
@@ -186,7 +195,11 @@ describe('thread and message read procedures', () => {
       status: 'received',
     })
 
-    const firstPage = await requestJson(`/api/threads/${threadId}/messages?limit=2`)
+    const firstPage = await requestJson<{
+      nextCursor: {
+        id: string
+      } | null
+    }>(`/api/threads/${threadId}/messages?limit=2`)
 
     expect(firstPage.response.status).toBe(200)
     expect(firstPage.json).toMatchObject({
@@ -209,8 +222,12 @@ describe('thread and message read procedures', () => {
       },
     })
 
+    const messageCursor = firstPage.json.nextCursor
+
+    expect(messageCursor).not.toBeNull()
+
     const secondPage = await requestJson(
-      `/api/threads/${threadId}/messages?limit=2&cursorMessageId=${firstPage.json.nextCursor.id}`,
+      `/api/threads/${threadId}/messages?limit=2&cursorMessageId=${messageCursor!.id}`,
     )
 
     expect(secondPage.response.status).toBe(200)
@@ -316,7 +333,7 @@ describe('thread and message read procedures', () => {
   })
 })
 
-async function requestJson(path: string) {
+async function requestJson<T = unknown>(path: string) {
   const request = new Request(`http://localhost${path}`)
   const result = await apiHandler.handle(request, {
     context: {
@@ -331,7 +348,7 @@ async function requestJson(path: string) {
 
   return {
     response: result.response,
-    json: await result.response.json() as any,
+    json: await result.response.json() as T,
   }
 }
 
