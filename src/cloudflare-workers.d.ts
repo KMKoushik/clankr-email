@@ -1,3 +1,7 @@
 declare module 'cloudflare:workers' {
-  export const env: Record<string, unknown>
+  export interface CloudflareEnv {
+    APP_DB: D1Database
+  }
+
+  export const env: CloudflareEnv
 }

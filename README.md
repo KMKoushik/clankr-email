@@ -89,7 +89,7 @@ This project is configured for Cloudflare D1 + Drizzle.
    ```
 
 2. Add the returned `database_id` to `wrangler.jsonc` under `d1_databases`.
-   Keep the binding name as `clankr_email_db` (it matches `src/db/index.ts`).
+   Keep the binding name as `APP_DB` (it matches `src/db/index.ts`).
 
 3. Generate and apply schema migrations:
 
@@ -102,6 +102,13 @@ This project is configured for Cloudflare D1 + Drizzle.
 
    ```bash
    pnpm db:migrate:remote
+   ```
+
+5. Check migration status at any time:
+
+   ```bash
+   pnpm db:migrate:list
+   pnpm db:migrate:list:remote
    ```
 
 

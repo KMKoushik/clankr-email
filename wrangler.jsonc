@@ -6,7 +6,7 @@
   "main": "@tanstack/react-start/server-entry",
   "d1_databases": [
     {
-      "binding": "clankr_email_db",
+      "binding": "APP_DB",
       "database_name": "clankr-email",
       "database_id": "0737eaec-e390-4094-bfe8-5664bfbe71fe",
       "migrations_dir": "drizzle",

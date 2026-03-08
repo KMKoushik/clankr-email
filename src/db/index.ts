@@ -3,8 +3,10 @@ import { drizzle } from 'drizzle-orm/d1'
 
 import * as schema from './schema.ts'
 
-const d1 =
-  (env as unknown as { clankr_email_db: Parameters<typeof drizzle>[0] })
-    .clankr_email_db
+export function createDb(database: Parameters<typeof drizzle>[0]) {
+  return drizzle(database, { schema })
+}
 
-export const db = drizzle(d1, { schema })
+export type AppDb = ReturnType<typeof createDb>
+
+export const db = createDb(env.APP_DB)

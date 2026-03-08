@@ -13,8 +13,10 @@
     "deploy": "pnpm run build && wrangler deploy",
     "cf-typegen": "wrangler types",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "wrangler d1 migrations apply clankr_email_db --local",
-    "db:migrate:remote": "wrangler d1 migrations apply clankr_email_db --remote",
+    "db:migrate": "wrangler d1 migrations apply APP_DB --local",
+    "db:migrate:list": "wrangler d1 migrations list APP_DB --local",
+    "db:migrate:remote": "wrangler d1 migrations apply APP_DB --remote",
+    "db:migrate:list:remote": "wrangler d1 migrations list APP_DB --remote",
     "db:push": "drizzle-kit push",
     "db:pull": "drizzle-kit pull",
     "db:studio": "drizzle-kit studio --config drizzle.local.config.ts",
@@ -54,6 +56,7 @@
     "tailwind-merge": "^3.0.2",
     "tailwindcss": "^4.1.18",
     "tw-animate-css": "^1.3.6",
+    "ulid": "^3.0.2",
     "zod": "^4.1.11"
   },
   "devDependencies": {
