@@ -69,15 +69,38 @@ type ThreadDatabase = Pick<AppDb, 'insert' | 'select' | 'update'>
 
 export type SendMessageInput = z.input<typeof sendMessageInputSchema>
 
-export type SendMessageResult = {
+export const sendMessageResultSchema = z.object({
+  id: z.string(),
+  inboxId: z.string(),
+  threadId: z.string(),
+  providerMessageId: z.string().nullable(),
+  status: z.enum(['accepted', 'failed']),
+  errorCode: z.string().nullable(),
+  errorMessage: z.string().nullable(),
+  sentAt: z.string().datetime().nullable(),
+})
+
+export type SendMessageResult = z.infer<typeof sendMessageResultSchema>
+
+type SendMessageStatusUpdate = {
+  providerMessageId: string | null
+  status: SendMessageResult['status']
+  errorCode: string | null
+  errorMessage: string | null
+  sentAt: Date | null
+}
+
+type ReplyContext = {
+  threadId: string
+  inReplyTo: string | null
+  references: string[]
+}
+
+type PendingOutboundMessage = {
   id: string
   inboxId: string
   threadId: string
-  providerMessageId: string | null
-  status: 'accepted' | 'failed'
-  errorCode: string | null
-  errorMessage: string | null
-  sentAt: string | null
+  internetMessageId: string
 }
 
 export class SendMessageValidationError extends Error {}
@@ -117,32 +140,6 @@ export async function sendMessage(params: {
     throw new SendMessageThreadNotFoundError('Thread not found.')
   }
 
-  let providerMessageId: string | null = null
-  let status: SendMessageResult['status'] = 'accepted'
-  let errorCode: string | null = null
-  let errorMessage: string | null = null
-
-  try {
-    const result = await env.EMAIL.send({
-      from: fromEmail,
-      to: input.to,
-      cc: input.cc.length > 0 ? input.cc : undefined,
-      bcc: input.bcc.length > 0 ? input.bcc : undefined,
-      subject: input.subject,
-      text: input.text,
-      html: input.html,
-      headers: buildOutboundHeaders(internetMessageId, replyContext),
-    })
-
-    providerMessageId = result.messageId
-  } catch (error) {
-    const mappedError = mapSendProviderError(error)
-
-    status = 'failed'
-    errorCode = mappedError.code
-    errorMessage = mappedError.message
-  }
-
   if (bodyStorage.oversizedBodyR2Key) {
     await env.EMAIL_STORAGE.put(
       bodyStorage.oversizedBodyR2Key,
@@ -153,42 +150,21 @@ export async function sendMessage(params: {
     )
   }
 
-  const threadId = await database.transaction(async (tx) => {
-    const nextThreadId = replyContext?.threadId
-      ?? (await findExistingThreadId(tx, {
-        inboxId: input.inboxId,
-        participantHash,
-        subjectNormalized: normalizeThreadSubject(input.subject),
-      }))
-      ?? createThreadId()
-
-    const [existingThread] = await tx
-      .select({ id: emailThreads.id })
-      .from(emailThreads)
-      .where(eq(emailThreads.id, nextThreadId))
-      .limit(1)
-
-    if (existingThread) {
-      await tx
-        .update(emailThreads)
-        .set({ lastMessageAt: sentAt })
-        .where(eq(emailThreads.id, nextThreadId))
-    } else {
-      await tx.insert(emailThreads).values({
-        id: nextThreadId,
-        inboxId: input.inboxId,
-        subjectNormalized: normalizeThreadSubject(input.subject),
-        participantHash,
-        lastMessageAt: sentAt,
-      })
-    }
+  const pendingMessage = await database.transaction(async (tx) => {
+    const threadId = await ensureThread(tx, {
+      inboxId: input.inboxId,
+      participantHash,
+      replyContext,
+      sentAt,
+      subject: input.subject,
+    })
 
     await tx.insert(emailMessages).values({
       id: messageId,
       inboxId: input.inboxId,
-      threadId: nextThreadId,
+      threadId,
       direction: 'outbound',
-      providerMessageId,
+      providerMessageId: null,
       internetMessageId,
       fromEmail,
       toEmailsJson: JSON.stringify(input.to),
@@ -202,47 +178,67 @@ export async function sendMessage(params: {
       rawMimeR2Key: null,
       oversizedBodyR2Key: bodyStorage.oversizedBodyR2Key,
       bodySizeBytes: bodyStorage.bodySizeBytes,
-      status,
-      errorCode,
-      errorMessage,
-      sentAt: status === 'accepted' ? sentAt : null,
+      status: 'pending',
+      errorCode: null,
+      errorMessage: null,
+      sentAt: null,
       receivedAt: null,
     })
 
-    return nextThreadId
+    return {
+      id: messageId,
+      inboxId: input.inboxId,
+      threadId,
+      internetMessageId,
+    }
   })
 
-  if (status === 'accepted' && providerMessageId) {
-    await env.EMAIL_EVENTS.send(
-      createMessageSentAcceptedEvent({
-        inboxId: input.inboxId,
-        threadId,
-        messageId,
-        providerMessageId,
-      }),
-    )
+  let statusUpdate: SendMessageStatusUpdate
+
+  try {
+    const result = await env.EMAIL.send({
+      from: fromEmail,
+      to: input.to,
+      cc: input.cc.length > 0 ? input.cc : undefined,
+      bcc: input.bcc.length > 0 ? input.bcc : undefined,
+      subject: input.subject,
+      text: input.text,
+      html: input.html,
+        headers: buildOutboundHeaders(pendingMessage.internetMessageId, replyContext),
+      })
+
+    statusUpdate = {
+      providerMessageId: result.messageId,
+      status: 'accepted',
+      errorCode: null,
+      errorMessage: null,
+      sentAt,
+    }
+  } catch (error) {
+    const mappedError = mapSendProviderError(error)
+
+    statusUpdate = {
+      providerMessageId: null,
+      status: 'failed',
+      errorCode: mappedError.code,
+      errorMessage: mappedError.message,
+      sentAt: null,
+    }
   }
 
-  if (status === 'failed' && errorCode) {
-    await env.EMAIL_EVENTS.send(
-      createMessageSentFailedEvent({
-        inboxId: input.inboxId,
-        threadId,
-        messageId,
-        errorCode,
-      }),
-    )
-  }
+  await updateOutboundMessageStatus(database, pendingMessage.id, statusUpdate)
+
+  await emitSendEvent(env, pendingMessage, statusUpdate)
 
   return {
-    id: messageId,
-    inboxId: input.inboxId,
-    threadId,
-    providerMessageId,
-    status,
-    errorCode,
-    errorMessage,
-    sentAt: status === 'accepted' ? sentAt.toISOString() : null,
+    id: pendingMessage.id,
+    inboxId: pendingMessage.inboxId,
+    threadId: pendingMessage.threadId,
+    providerMessageId: statusUpdate.providerMessageId,
+    status: statusUpdate.status,
+    errorCode: statusUpdate.errorCode,
+    errorMessage: statusUpdate.errorMessage,
+    sentAt: statusUpdate.sentAt?.toISOString() ?? null,
   }
 }
 
@@ -272,13 +268,16 @@ async function getReplyContext(inboxId: string, threadId: string) {
 
   const threadMessages = await database
     .select({
+      direction: emailMessages.direction,
       internetMessageId: emailMessages.internetMessageId,
+      status: emailMessages.status,
     })
     .from(emailMessages)
     .where(and(eq(emailMessages.threadId, threadId), eq(emailMessages.inboxId, inboxId)))
     .orderBy(asc(emailMessages.createdAt), asc(emailMessages.id))
 
   const references = threadMessages
+    .filter((message) => message.direction === 'inbound' || message.status === 'accepted')
     .map((message) => message.internetMessageId)
     .filter((value): value is string => Boolean(value))
 
@@ -315,7 +314,7 @@ async function findExistingThreadId(
 
 function buildOutboundHeaders(
   internetMessageId: string,
-  replyContext: Awaited<ReturnType<typeof getReplyContext>>,
+  replyContext: ReplyContext | null,
 ) {
   const headers: Record<string, string> = {
     'Message-ID': internetMessageId,
@@ -330,6 +329,103 @@ function buildOutboundHeaders(
   }
 
   return headers
+}
+
+async function ensureThread(
+  database: ThreadDatabase,
+  params: {
+    inboxId: string
+    participantHash: string
+    replyContext: ReplyContext | null
+    sentAt: Date
+    subject: string
+  },
+) {
+  const threadId = params.replyContext?.threadId
+    ?? (await findExistingThreadId(database, {
+      inboxId: params.inboxId,
+      participantHash: params.participantHash,
+      subjectNormalized: normalizeThreadSubject(params.subject),
+    }))
+    ?? createThreadId()
+
+  const [existingThread] = await database
+    .select({ id: emailThreads.id })
+    .from(emailThreads)
+    .where(eq(emailThreads.id, threadId))
+    .limit(1)
+
+  if (existingThread) {
+    await database
+      .update(emailThreads)
+      .set({ lastMessageAt: params.sentAt })
+      .where(eq(emailThreads.id, threadId))
+  } else {
+    await database.insert(emailThreads).values({
+      id: threadId,
+      inboxId: params.inboxId,
+      subjectNormalized: normalizeThreadSubject(params.subject),
+      participantHash: params.participantHash,
+      lastMessageAt: params.sentAt,
+    })
+  }
+
+  return threadId
+}
+
+async function updateOutboundMessageStatus(
+  database: AppDb,
+  messageId: string,
+  statusUpdate: SendMessageStatusUpdate,
+) {
+  await database
+    .update(emailMessages)
+    .set({
+      providerMessageId: statusUpdate.providerMessageId,
+      status: statusUpdate.status,
+      errorCode: statusUpdate.errorCode,
+      errorMessage: statusUpdate.errorMessage,
+      sentAt: statusUpdate.sentAt,
+    })
+    .where(eq(emailMessages.id, messageId))
+}
+
+async function emitSendEvent(
+  env: Pick<Env, 'EMAIL_EVENTS'>,
+  pendingMessage: PendingOutboundMessage,
+  statusUpdate: SendMessageStatusUpdate,
+) {
+  try {
+    if (statusUpdate.status === 'accepted' && statusUpdate.providerMessageId) {
+      await env.EMAIL_EVENTS.send(
+        createMessageSentAcceptedEvent({
+          inboxId: pendingMessage.inboxId,
+          threadId: pendingMessage.threadId,
+          messageId: pendingMessage.id,
+          providerMessageId: statusUpdate.providerMessageId,
+        }),
+      )
+
+      return
+    }
+
+    if (statusUpdate.status === 'failed' && statusUpdate.errorCode) {
+      await env.EMAIL_EVENTS.send(
+        createMessageSentFailedEvent({
+          inboxId: pendingMessage.inboxId,
+          threadId: pendingMessage.threadId,
+          messageId: pendingMessage.id,
+          errorCode: statusUpdate.errorCode,
+        }),
+      )
+    }
+  } catch (error) {
+    console.error('Failed to emit outbound email event.', {
+      error,
+      messageId: pendingMessage.id,
+      status: statusUpdate.status,
+    })
+  }
 }
 
 function getInboxEmailAddress(inbox: typeof inboxes.$inferSelect) {

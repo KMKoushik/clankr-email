@@ -1,25 +1,13 @@
 import { ORPCError } from '@orpc/server'
-import { z } from 'zod'
-
 import {
   sendMessage,
   sendMessageInputSchema,
+  sendMessageResultSchema,
   SendMessageOwnershipError,
   SendMessageThreadNotFoundError,
   SendMessageValidationError,
 } from '#/lib/email/outbound'
 import { protectedOrpc } from '#/orpc/context'
-
-const sendMessageResultSchema = z.object({
-  id: z.string(),
-  inboxId: z.string(),
-  threadId: z.string(),
-  providerMessageId: z.string().nullable(),
-  status: z.enum(['accepted', 'failed']),
-  errorCode: z.string().nullable(),
-  errorMessage: z.string().nullable(),
-  sentAt: z.string().datetime().nullable(),
-})
 
 export const messageRouter = {
   send: protectedOrpc

@@ -210,6 +210,57 @@ describe('outbound email pipeline', () => {
     })
   })
 
+  it('does not reference failed outbound messages when retrying a reply thread', async () => {
+    const userId = await createUserRecord(harness.db)
+    const inboxId = await createInboxRecord(harness.db, userId, {
+      customLocalPart: 'agent',
+    })
+
+    harness.email.failWith(
+      Object.assign(new Error('provider outage'), {
+        code: 'provider_error',
+      }),
+    )
+
+    const failedResult = await sendMessage({
+      userId,
+      input: {
+        inboxId,
+        to: ['customer@example.com'],
+        subject: 'Re: Retry me',
+        text: 'First attempt',
+      },
+    })
+
+    const retryResult = await sendMessage({
+      userId,
+      input: {
+        inboxId,
+        to: ['customer@example.com'],
+        subject: 'Re: Retry me',
+        text: 'Second attempt',
+        replyToThreadId: failedResult.threadId,
+      },
+    })
+
+    expect(retryResult.threadId).toBe(failedResult.threadId)
+    expect(harness.email.sent[1]).toMatchObject({
+      headers: {
+        'Message-ID': expect.any(String),
+      },
+    })
+    expect(harness.email.sent[1]).not.toMatchObject({
+      headers: {
+        'In-Reply-To': expect.any(String),
+      },
+    })
+    expect(harness.email.sent[1]).not.toMatchObject({
+      headers: {
+        References: expect.any(String),
+      },
+    })
+  })
+
   it('reuses reply threads and sends reply headers', async () => {
     const userId = await createUserRecord(harness.db)
     const inboxId = await createInboxRecord(harness.db, userId, {
