@@ -214,7 +214,7 @@ export async function sendMessage(params: {
     }
   } catch (error) {
     console.error('outbound_email_provider_rejected', {
-      error,
+      error: serializeProviderError(error),
       fromEmail,
       inboxId: input.inboxId,
       messageId,
@@ -540,4 +540,31 @@ function normalizeErrorCode(error: unknown) {
         : ''
 
   return maybeCode.trim().toLowerCase()
+}
+
+function serializeProviderError(error: unknown): unknown {
+  if (error instanceof Error) {
+    return {
+      cause: error.cause ? serializeProviderError(error.cause) : undefined,
+      message: error.message,
+      name: error.name,
+      stack: error.stack,
+      ...(hasStringCode(error) ? { code: error.code } : {}),
+    }
+  }
+
+  if (error && typeof error === 'object') {
+    const record = error as Record<string, unknown>
+
+    return {
+      ...record,
+      ...(typeof record.cause !== 'undefined' ? { cause: serializeProviderError(record.cause) } : {}),
+    }
+  }
+
+  return error
+}
+
+function hasStringCode(error: Error): error is Error & { code: string } {
+  return 'code' in error && typeof error.code === 'string'
 }
