@@ -76,9 +76,6 @@ describe('outbound email pipeline', () => {
       to: ['customer@example.com'],
       subject: 'Project update',
       text: 'Hello from Clankr',
-      headers: {
-        'Message-ID': storedMessage?.internetMessageId,
-      },
     })
     expect(storedMessage).toMatchObject({
       id: result.id,
@@ -244,21 +241,7 @@ describe('outbound email pipeline', () => {
     })
 
     expect(retryResult.threadId).toBe(failedResult.threadId)
-    expect(harness.email.sent[1]).toMatchObject({
-      headers: {
-        'Message-ID': expect.any(String),
-      },
-    })
-    expect(harness.email.sent[1]).not.toMatchObject({
-      headers: {
-        'In-Reply-To': expect.any(String),
-      },
-    })
-    expect(harness.email.sent[1]).not.toMatchObject({
-      headers: {
-        References: expect.any(String),
-      },
-    })
+    expect(harness.email.sent[1]).not.toHaveProperty('headers')
   })
 
   it('reuses reply threads and sends reply headers', async () => {
@@ -276,11 +259,6 @@ describe('outbound email pipeline', () => {
         text: 'First message',
       },
     })
-    const [firstMessage] = await harness.db
-      .select()
-      .from(emailMessages)
-      .where(eq(emailMessages.id, firstResult.id))
-
     const secondResult = await sendMessage({
       userId,
       input: {
@@ -298,11 +276,6 @@ describe('outbound email pipeline', () => {
 
     expect(secondResult.threadId).toBe(firstResult.threadId)
     expect(secondMessage?.threadId).toBe(firstResult.threadId)
-    expect(harness.email.sent[1]).toMatchObject({
-      headers: {
-        'In-Reply-To': firstMessage?.internetMessageId,
-        References: firstMessage?.internetMessageId,
-      },
-    })
+    expect(harness.email.sent[1]).not.toHaveProperty('headers')
   })
 })

@@ -261,8 +261,7 @@ export async function sendMessage(params: {
       subject: input.subject,
       text: input.text,
       html: input.html,
-        headers: buildOutboundHeaders(pendingMessage.internetMessageId, replyContext),
-      })
+    })
 
     statusUpdate = {
       providerMessageId: result.messageId,
@@ -376,25 +375,6 @@ async function findExistingThreadId(
     .limit(1)
 
   return thread?.id ?? null
-}
-
-function buildOutboundHeaders(
-  internetMessageId: string,
-  replyContext: ReplyContext | null,
-) {
-  const headers: Record<string, string> = {
-    'Message-ID': internetMessageId,
-  }
-
-  if (replyContext?.inReplyTo) {
-    headers['In-Reply-To'] = replyContext.inReplyTo
-  }
-
-  if (replyContext && replyContext.references.length > 0) {
-    headers.References = replyContext.references.join(' ')
-  }
-
-  return headers
 }
 
 async function ensureThread(
