@@ -326,6 +326,7 @@ function DashboardPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">No headers</SelectItem>
+                        <SelectItem value="x-test">X-Test only</SelectItem>
                         <SelectItem value="message-id">Message-ID only</SelectItem>
                         <SelectItem value="in-reply-to">In-Reply-To only</SelectItem>
                         <SelectItem value="references">References only</SelectItem>

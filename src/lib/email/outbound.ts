@@ -84,14 +84,14 @@ export type SendMessageResult = z.infer<typeof sendMessageResultSchema>
 
 export const sendTestEmailResultSchema = z.object({
   fromEmail: z.string().email(),
-  headerMode: z.enum(['none', 'message-id', 'in-reply-to', 'references', 'all']),
+  headerMode: z.enum(['none', 'x-test', 'message-id', 'in-reply-to', 'references', 'all']),
   messageId: z.string(),
   subject: z.string(),
   toEmail: z.string().email(),
 })
 
 export const sendTestEmailInputSchema = z.object({
-  headerMode: z.enum(['none', 'message-id', 'in-reply-to', 'references', 'all']).default('none'),
+  headerMode: z.enum(['none', 'x-test', 'message-id', 'in-reply-to', 'references', 'all']).default('none'),
   inboxId: z.string().trim().min(1),
 })
 
@@ -498,6 +498,10 @@ function buildDebugTestHeaders(fromEmail: string, headerMode: TestEmailHeaderMod
   const referenceId = `<debug-root@${domain}>`
 
   switch (headerMode) {
+    case 'x-test':
+      return {
+        'X-Clankr-Test': '1',
+      }
     case 'message-id':
       return {
         'Message-ID': messageId,
