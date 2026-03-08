@@ -6,10 +6,10 @@ Build a Cloudflare-native "email for agents" MVP where each signed-up user can o
 
 ## 2) Requirements mapped to MVP
 
-1. On signup, auto-provision an inbox: `id@clankr.email`.
-2. User can assign one friendly alias per inbox: `name@clankr.email`.
-3. Multi-inbox per user is supported from day 1.
-4. App can send and receive email through API.
+1. ~~On signup, auto-provision an inbox: `id@clankr.email`.~~
+2. ~~User can assign one friendly alias per inbox: `name@clankr.email`.~~
+3. ~~Multi-inbox per user is supported from day 1.~~
+4. ~~App can send and receive email through API.~~
 5. App can list threads and read thread messages through API.
 6. App supports webhook subscriptions for email events.
 7. Implementation is fully on Cloudflare primitives.
@@ -241,17 +241,17 @@ All product APIs are defined as oRPC procedures (single source of truth) in `#/o
 
 ### Inbox procedures
 
-- `inboxes.list` -> list user inboxes
-- `inboxes.create` -> create additional inbox
-- `inboxes.get` -> inbox detail
-- `inboxes.updateAlias` -> set/clear `custom_local_part`
+- ~~`inboxes.list` -> list user inboxes~~
+- ~~`inboxes.create` -> create additional inbox~~
+- ~~`inboxes.get` -> inbox detail~~
+- ~~`inboxes.updateAlias` -> set/clear `custom_local_part`~~
 
 ### Send procedures
 
-- `messages.send`
-  - input: `inboxId`, `to[]`, `cc[]`, `bcc[]`, `subject`, `text|html`, `replyToThreadId?`
-  - action: validate ownership + `env.EMAIL.send`
-  - output: internal message id + provider message id + status
+- ~~`messages.send`~~
+  - ~~input: `inboxId`, `to[]`, `cc[]`, `bcc[]`, `subject`, `text|html`, `replyToThreadId?`~~
+  - ~~action: validate ownership + `env.EMAIL.send`~~
+  - ~~output: internal message id + provider message id + status~~
 
 ### Thread/message read procedures
 
@@ -269,39 +269,39 @@ All product APIs are defined as oRPC procedures (single source of truth) in `#/o
 
 ## 8) Inbound email processing flow
 
-1. Cloudflare routes incoming email to Worker `email()` handler.
-2. Resolve `message.to` local part to inbox in `APP_DB` (`custom_local_part` then `default_local_part`).
-3. Parse MIME body from `message.raw` (robust parser library, not regex).
-4. Compute thread in `APP_DB`:
-   - preferred: `In-Reply-To`/`References` match existing `internet_message_id`
-   - fallback: normalized subject + participants hash within inbox
-5. Persist message metadata and parsed body in `APP_DB`.
-6. Persist raw MIME to R2, plus oversized bodies and attachments when needed.
-7. Update thread `last_message_at` in `APP_DB`.
-8. Emit `message.received` event to queue for webhooks.
+1. ~~Cloudflare routes incoming email to Worker `email()` handler.~~
+2. ~~Resolve `message.to` local part to inbox in `APP_DB` (`custom_local_part` then `default_local_part`).~~
+3. ~~Parse MIME body from `message.raw` (robust parser library, not regex).~~
+4. ~~Compute thread in `APP_DB`:~~
+   - ~~preferred: `In-Reply-To`/`References` match existing `internet_message_id`~~
+   - ~~fallback: normalized subject + participants hash within inbox~~
+5. ~~Persist message metadata and parsed body in `APP_DB`.~~
+6. ~~Persist raw MIME to R2, plus oversized bodies and attachments when needed.~~
+7. ~~Update thread `last_message_at` in `APP_DB`.~~
+8. ~~Emit `message.received` event to queue for webhooks.~~
 
 ## 9) Outbound sending flow
 
-1. Authenticated user calls `messages.send` procedure.
-2. Validate sender inbox ownership in `APP_DB` and enforce recipient limits.
-3. Persist outbound metadata row in `APP_DB` (`accepted|failed`).
-4. Call `env.EMAIL.send(...)`.
-5. Persist provider `messageId` and error code/message if failed (`APP_DB`).
-6. Store parsed outbound bodies in `APP_DB`; store raw MIME or oversized payloads in R2 when needed.
-7. Thread linkage:
-   - if replying: include `In-Reply-To`/`References` headers
-   - else: create/find thread by subject + participants in `APP_DB`
-8. Emit events:
-   - `message.sent.accepted`
-   - `message.sent.failed`
+1. ~~Authenticated user calls `messages.send` procedure.~~
+2. ~~Validate sender inbox ownership in `APP_DB` and enforce recipient limits.~~
+3. ~~Persist outbound metadata row in `APP_DB` (`accepted|failed`).~~
+4. ~~Call `env.EMAIL.send(...)`.~~
+5. ~~Persist provider `messageId` and error code/message if failed (`APP_DB`).~~
+6. ~~Store parsed outbound bodies in `APP_DB`; store raw MIME or oversized payloads in R2 when needed.~~
+7. ~~Thread linkage:~~
+   - ~~if replying: include `In-Reply-To`/`References` headers~~
+   - ~~else: create/find thread by subject + participants in `APP_DB`~~
+8. ~~Emit events:~~
+   - ~~`message.sent.accepted`~~
+   - ~~`message.sent.failed`~~
 
 ## 10) Webhook event system
 
 ### Event types (MVP)
 
-- `message.received`
-- `message.sent.accepted`
-- `message.sent.failed`
+- ~~`message.received`~~
+- ~~`message.sent.accepted`~~
+- ~~`message.sent.failed`~~
 - `thread.updated`
 - `inbox.alias.updated`
 
@@ -330,12 +330,12 @@ Payload shape:
 
 ## 11) Security and tenancy rules
 
-- Every read/write query scoped by `session.user.id` ownership.
-- Validate external input at procedure boundaries (oRPC + Zod) before DB writes.
+- ~~Every read/write query scoped by `session.user.id` ownership.~~
+- ~~Validate external input at procedure boundaries (oRPC + Zod) before DB writes.~~
 - No reliance on DB foreign keys for auth boundaries.
-- Never expose raw provider errors directly without sanitizing.
+- ~~Never expose raw provider errors directly without sanitizing.~~
 - Rate-limit `messages.send` per user + per inbox.
-- Enforce max recipients and payload size before `env.EMAIL.send`.
+- ~~Enforce max recipients and payload size before `env.EMAIL.send`.~~
 - For webhook URLs:
   - allow only `https`
   - block localhost/private CIDR in production
@@ -360,26 +360,26 @@ Test work starts in Phase 0 and continues in every phase. New primitives should 
 - [x] Add prefixed ULID utility (`in_`, `th_`, `em_`, `wh_`, `evt_`, `wd_`).
 - [x] Add `EMAIL`, R2, and Queue bindings in Wrangler.
 - Add migration smoke checks in CI (`migrations list` should be empty after apply).
-- Write the first unit and repository tests for ID generation, alias validation, and schema-level helpers as the foundation code is added.
+- ~~Write the first unit and repository tests for ID generation, alias validation, and schema-level helpers as the foundation code is added.~~
 
 ### Phase 2: Inbox provisioning + alias
 
 - [x] Hook signup flow to auto-create first inbox.
 - [x] Implement `inboxes.create` procedure.
 - [x] Implement `inboxes.updateAlias` procedure with uniqueness validation.
-- Write integration tests for signup provisioning, additional inbox creation, alias updates, reserved-word rejection, and uniqueness collisions alongside the implementation.
+- ~~Write integration tests for signup provisioning, additional inbox creation, alias updates, reserved-word rejection, and uniqueness collisions alongside the implementation.~~
 
 ### Phase 3: Receive pipeline
 
 - [x] Implement `email()` handler with inbox resolution in `APP_DB`, MIME parsing, D1 persistence, and R2 raw MIME/overflow storage.
 - [x] Write integration tests for routing + threading fallback before wiring the full handler.
-- Add fixture-driven inbound tests for unknown inbox rejection, reply-chain threading, fallback threading, duplicate provider/internet message IDs, and oversized body spillover to R2 as each case is implemented.
+- ~~Add fixture-driven inbound tests for unknown inbox rejection, reply-chain threading, fallback threading, duplicate provider/internet message IDs, and oversized body spillover to R2 as each case is implemented.~~
 
 ### Phase 4: Send pipeline
 
-- Implement `messages.send` procedure backed by `env.EMAIL.send` with app-db ownership checks.
-- Persist send outcomes in `APP_DB` and map Cloudflare error codes to API responses.
-- Write integration tests covering happy-path send, ownership rejection, recipient/payload validation, provider failure mapping, reply headers, and DB persistence of send status alongside the procedure work.
+- [x] Implement `messages.send` procedure backed by `env.EMAIL.send` with app-db ownership checks.
+- [x] Persist send outcomes in `APP_DB` and map Cloudflare error codes to API responses.
+- [x] Write integration tests covering happy-path send, ownership rejection, recipient/payload validation, provider failure mapping, reply headers, and DB persistence of send status alongside the procedure work.
 
 ### Phase 5: Thread procedures
 
@@ -415,14 +415,14 @@ Tests are written from the beginning of implementation, not collected at the end
 
 ### What must be independently testable
 
-- **Inbox provisioning**: signup creates exactly one inbox with a stable default local part.
-- **Alias management**: alias validation, uniqueness, reserved words, clear/reset behavior.
-- **Inbound routing**: local-part resolution, unknown inbox rejection, active/inactive inbox handling.
-- **Message parsing**: MIME parsing to normalized subject, participants, text/html body, snippet, message IDs.
-- **Threading**: `In-Reply-To`/`References` matching first, deterministic fallback second.
-- **Message persistence**: inserts, idempotency behavior, status transitions, and thread `last_message_at` updates.
-- **Body storage**: normal bodies read from D1; oversized bodies/raw MIME/attachments written to and retrievable from R2.
-- **Outbound sending**: auth checks, payload validation, provider success/failure mapping, reply header generation.
+- ~~**Inbox provisioning**: signup creates exactly one inbox with a stable default local part.~~
+- ~~**Alias management**: alias validation, uniqueness, reserved words, clear/reset behavior.~~
+- ~~**Inbound routing**: local-part resolution, unknown inbox rejection, active/inactive inbox handling.~~
+- ~~**Message parsing**: MIME parsing to normalized subject, participants, text/html body, snippet, message IDs.~~
+- ~~**Threading**: `In-Reply-To`/`References` matching first, deterministic fallback second.~~
+- ~~**Message persistence**: inserts, idempotency behavior, status transitions, and thread `last_message_at` updates.~~
+- ~~**Body storage**: normal bodies read from D1; oversized bodies/raw MIME/attachments written to and retrievable from R2.~~
+- ~~**Outbound sending**: auth checks, payload validation, provider success/failure mapping, reply header generation.~~
 - **Read APIs**: inbox/thread/message listing and detail endpoints with pagination and ownership enforcement.
 - **Webhooks**: subscription CRUD, event fanout, HMAC signing, retry scheduling, dead-letter behavior.
 
@@ -451,16 +451,16 @@ Minimum validation before merging a feature:
 
 ## 14) MVP acceptance criteria
 
-1. Signup auto-creates a working `@clankr.email` inbox.
-2. User can create additional inboxes and set one friendly alias per inbox.
+1. ~~Signup auto-creates a working `@clankr.email` inbox.~~
+2. ~~User can create additional inboxes and set one friendly alias per inbox.~~
 3. Inbound emails to default or custom local parts resolve via `APP_DB` and appear in thread/message APIs.
-4. `messages.send` sends mail from selected inbox and persists status/message IDs in `APP_DB`.
-5. Thread grouping works for standard reply chains.
+4. ~~`messages.send` sends mail from selected inbox and persists status/message IDs in `APP_DB`.~~
+5. ~~Thread grouping works for standard reply chains.~~
 6. Webhook subscribers receive signed events with retries.
 7. End-to-end runs on Cloudflare (Workers + Email Service + D1 + R2 + Queues).
-8. All IDs are prefixed ULIDs and are time-sort friendly.
-9. Local + remote migrations are repeatable for `APP_DB`.
-10. MVP API surface is implemented in oRPC procedures and served via `/api/rpc/*` (with OpenAPI output at `/api/openapi.json`).
+8. ~~All IDs are prefixed ULIDs and are time-sort friendly.~~
+9. ~~Local + remote migrations are repeatable for `APP_DB`.~~
+10. ~~MVP API surface is implemented in oRPC procedures and served via `/api/rpc/*` (with OpenAPI output at `/api/openapi.json`).~~
 
 ## 15) Known MVP constraints
 
