@@ -1,8 +1,11 @@
 import { ORPCError } from '@orpc/server'
+import { z } from 'zod'
 import {
   sendMessage,
   sendMessageInputSchema,
   sendMessageResultSchema,
+  sendSignedInUserTestEmail,
+  sendTestEmailResultSchema,
   SendMessageOwnershipError,
   SendMessageThreadNotFoundError,
   SendMessageValidationError,
@@ -64,5 +67,19 @@ export const messageRouter = {
 
         throw error
       }
+    }),
+
+  sendTest: protectedOrpc
+    .route({
+      method: 'POST',
+      path: '/messages/send-test',
+      summary: 'Send dashboard test email',
+    })
+    .input(z.object({}).optional())
+    .output(sendTestEmailResultSchema)
+    .handler(async ({ context }) => {
+      return sendSignedInUserTestEmail({
+        toEmail: context.session.user.email,
+      })
     }),
 }

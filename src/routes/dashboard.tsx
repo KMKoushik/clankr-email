@@ -4,6 +4,7 @@ import { Navigate, createFileRoute } from '@tanstack/react-router'
 import {
   AtSign,
   Clock3,
+  FlaskConical,
   Inbox as InboxIcon,
   LoaderCircle,
   MailPlus,
@@ -58,6 +59,7 @@ type MessageListResult = Awaited<ReturnType<typeof rpcClient.threads.listMessage
 type MessageSummary = MessageListResult['items'][number]
 type MessageDetail = Awaited<ReturnType<typeof rpcClient.messages.get>>
 type SendMessageInput = Parameters<typeof rpcClient.messages.send>[0]
+type SendTestEmailResult = Awaited<ReturnType<typeof rpcClient.messages.sendTest>>
 
 function DashboardPage() {
   const queryClient = useQueryClient()
@@ -253,6 +255,23 @@ function DashboardPage() {
     }),
   )
 
+  const sendTestEmailMutation = useMutation(
+    orpc.messages.sendTest.mutationOptions({
+      onSuccess: (result: SendTestEmailResult) => {
+        setActionNotice({
+          text: `Test email sent to ${result.toEmail} from ${result.fromEmail}.`,
+          tone: 'success',
+        })
+      },
+      onError: (error) => {
+        setActionNotice({
+          text: getErrorMessage(error),
+          tone: 'error',
+        })
+      },
+    }),
+  )
+
   if (isPending) {
     return (
       <main className="px-4 py-8 sm:px-6 lg:px-8 xl:px-10">
@@ -295,10 +314,32 @@ function DashboardPage() {
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[28rem]">
-                <MetricCard label="Signed in as" value={session.user.name || session.user.email} hint={session.user.email} />
-                <MetricCard label="Inboxes" value={String(inboxes.length)} hint={selectedInbox ? getPrimaryInboxAddress(selectedInbox) : 'Waiting for inboxes'} />
-                <MetricCard label="Threads here" value={String(threads.length)} hint={selectedThread?.subject || 'Select an inbox'} />
+              <div className="flex flex-col gap-3 lg:min-w-[34rem]">
+                <div className="flex justify-start lg:justify-end">
+                  <Button
+                    disabled={sendTestEmailMutation.isPending}
+                    onClick={() => {
+                      setActionNotice(null)
+                      sendTestEmailMutation.mutate({})
+                    }}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    {sendTestEmailMutation.isPending ? (
+                      <LoaderCircle className="size-4 animate-spin" />
+                    ) : (
+                      <FlaskConical className="size-4" />
+                    )}
+                    Send test email
+                  </Button>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <MetricCard label="Signed in as" value={session.user.name || session.user.email} hint={session.user.email} />
+                  <MetricCard label="Inboxes" value={String(inboxes.length)} hint={selectedInbox ? getPrimaryInboxAddress(selectedInbox) : 'Waiting for inboxes'} />
+                  <MetricCard label="Threads here" value={String(threads.length)} hint={selectedThread?.subject || 'Select an inbox'} />
+                </div>
               </div>
             </div>
 

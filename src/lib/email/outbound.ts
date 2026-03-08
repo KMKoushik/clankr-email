@@ -82,6 +82,15 @@ export const sendMessageResultSchema = z.object({
 
 export type SendMessageResult = z.infer<typeof sendMessageResultSchema>
 
+export const sendTestEmailResultSchema = z.object({
+  fromEmail: z.string().email(),
+  messageId: z.string(),
+  subject: z.string(),
+  toEmail: z.string().email(),
+})
+
+export type SendTestEmailResult = z.infer<typeof sendTestEmailResultSchema>
+
 type SendMessageStatusUpdate = {
   providerMessageId: string | null
   status: SendMessageResult['status']
@@ -108,6 +117,43 @@ export class SendMessageValidationError extends Error {}
 export class SendMessageOwnershipError extends Error {}
 
 export class SendMessageThreadNotFoundError extends Error {}
+
+export async function sendSignedInUserTestEmail(params: {
+  toEmail: string
+}): Promise<SendTestEmailResult> {
+  const env = getWorkerEnv() as Pick<Env, 'EMAIL'>
+  const fromEmail = 'hello@clankr.email'
+  const subject = 'Clankr test email'
+
+  try {
+    const result = await env.EMAIL.send({
+      from: fromEmail,
+      subject,
+      text: [
+        'Hello from Clankr.',
+        '',
+        'This is a test email from your dashboard to confirm outbound sending is working.',
+      ].join('\n'),
+      to: params.toEmail,
+    })
+
+    return {
+      fromEmail,
+      messageId: result.messageId,
+      subject,
+      toEmail: params.toEmail,
+    }
+  } catch (error) {
+    console.error('dashboard_test_email_provider_rejected', {
+      error: serializeProviderError(error),
+      fromEmail,
+      subject,
+      toEmail: params.toEmail,
+    })
+
+    throw error
+  }
+}
 
 export async function sendMessage(params: {
   userId: string
