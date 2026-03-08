@@ -110,6 +110,42 @@ export async function createInboxForUser(database: AppDb, userId: string) {
   return createdInbox;
 }
 
+export async function findInboxByLocalPart(database: AppDb, localPart: string) {
+  const normalizedLocalPart = localPart.trim().toLowerCase()
+
+  if (!normalizedLocalPart) {
+    return null
+  }
+
+  const [customInbox] = await database
+    .select()
+    .from(inboxes)
+    .where(
+      and(
+        eq(inboxes.customLocalPart, normalizedLocalPart),
+        eq(inboxes.isActive, true),
+      ),
+    )
+    .limit(1)
+
+  if (customInbox) {
+    return customInbox
+  }
+
+  const [defaultInbox] = await database
+    .select()
+    .from(inboxes)
+    .where(
+      and(
+        eq(inboxes.defaultLocalPart, normalizedLocalPart),
+        eq(inboxes.isActive, true),
+      ),
+    )
+    .limit(1)
+
+  return defaultInbox ?? null
+}
+
 export async function provisionInitialInbox(database: AppDb, userId: string) {
   const [existingInbox] = await database
     .select()

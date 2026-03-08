@@ -351,14 +351,14 @@ Test work starts in Phase 0 and continues in every phase. New primitives should 
 - [x] Keep one Drizzle schema/config/migration directory.
 - [x] Add CLI scripts for generate/apply/list migrations locally and remotely.
 - [x] Scaffold oRPC procedure modules/contract in `#/orpc/router` for inbox/send/thread/webhook domains.
-- Add a test harness for D1, R2, Queues, and Email bindings so each primitive can be exercised without a full end-to-end run.
-- Add fixture factories, MIME fixtures, and test helpers before feature work starts.
+- [x] Add a test harness for D1, R2, Queues, and Email bindings so each primitive can be exercised without a full end-to-end run.
+- [x] Add fixture factories, MIME fixtures, and test helpers before feature work starts.
 
 ### Phase 1: Foundation
 
 - [x] Add schema + migrations for inbox, thread, message, and webhook tables.
 - [x] Add prefixed ULID utility (`in_`, `th_`, `em_`, `wh_`, `evt_`, `wd_`).
-- Add `EMAIL`, R2, and Queue bindings in Wrangler.
+- [x] Add `EMAIL`, R2, and Queue bindings in Wrangler.
 - Add migration smoke checks in CI (`migrations list` should be empty after apply).
 - Write the first unit and repository tests for ID generation, alias validation, and schema-level helpers as the foundation code is added.
 
@@ -371,8 +371,8 @@ Test work starts in Phase 0 and continues in every phase. New primitives should 
 
 ### Phase 3: Receive pipeline
 
-- Implement `email()` handler with inbox resolution in `APP_DB`, MIME parsing, D1 persistence, and R2 raw MIME/overflow storage.
-- Write integration tests for routing + threading fallback before wiring the full handler.
+- [x] Implement `email()` handler with inbox resolution in `APP_DB`, MIME parsing, D1 persistence, and R2 raw MIME/overflow storage.
+- [x] Write integration tests for routing + threading fallback before wiring the full handler.
 - Add fixture-driven inbound tests for unknown inbox rejection, reply-chain threading, fallback threading, duplicate provider/internet message IDs, and oversized body spillover to R2 as each case is implemented.
 
 ### Phase 4: Send pipeline
