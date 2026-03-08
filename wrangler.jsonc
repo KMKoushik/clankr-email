@@ -3,7 +3,7 @@
   "name": "clankr-email",
   "compatibility_date": "2025-09-02",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "@tanstack/react-start/server-entry",
+  "main": "src/worker.ts",
   "d1_databases": [
     {
       "binding": "APP_DB",
@@ -12,4 +12,23 @@
       "migrations_dir": "drizzle",
     },
   ],
+  "send_email": [
+    {
+      "name": "EMAIL",
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "EMAIL_STORAGE",
+      "bucket_name": "clankr-email-storage",
+    },
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "EMAIL_EVENTS",
+        "queue": "clankr-email-events",
+      },
+    ],
+  },
 }
