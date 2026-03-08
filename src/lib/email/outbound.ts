@@ -84,17 +84,20 @@ export type SendMessageResult = z.infer<typeof sendMessageResultSchema>
 
 export const sendTestEmailResultSchema = z.object({
   fromEmail: z.string().email(),
+  headerMode: z.enum(['none', 'message-id', 'in-reply-to', 'references', 'all']),
   messageId: z.string(),
   subject: z.string(),
   toEmail: z.string().email(),
 })
 
 export const sendTestEmailInputSchema = z.object({
+  headerMode: z.enum(['none', 'message-id', 'in-reply-to', 'references', 'all']).default('none'),
   inboxId: z.string().trim().min(1),
 })
 
 export type SendTestEmailResult = z.infer<typeof sendTestEmailResultSchema>
 export type SendTestEmailInput = z.input<typeof sendTestEmailInputSchema>
+export type TestEmailHeaderMode = z.infer<typeof sendTestEmailInputSchema>['headerMode']
 
 type SendMessageStatusUpdate = {
   providerMessageId: string | null
@@ -124,6 +127,7 @@ export class SendMessageOwnershipError extends Error {}
 export class SendMessageThreadNotFoundError extends Error {}
 
 export async function sendSignedInUserTestEmail(params: {
+  headerMode: TestEmailHeaderMode
   inboxId: string
   userId: string
   toEmail: string
@@ -137,10 +141,12 @@ export async function sendSignedInUserTestEmail(params: {
 
   const fromEmail = getDefaultInboxEmailAddress(inbox)
   const subject = 'Clankr test email'
+  const headers = buildDebugTestHeaders(fromEmail, params.headerMode)
 
   try {
     const result = await env.EMAIL.send({
       from: fromEmail,
+      headers,
       subject,
       text: [
         'Hello from Clankr.',
@@ -152,6 +158,7 @@ export async function sendSignedInUserTestEmail(params: {
 
     return {
       fromEmail,
+      headerMode: params.headerMode,
       messageId: result.messageId,
       subject,
       toEmail: params.toEmail,
@@ -160,6 +167,7 @@ export async function sendSignedInUserTestEmail(params: {
     console.error('dashboard_test_email_provider_rejected', {
       error: serializeProviderError(error),
       fromEmail,
+      headerMode: params.headerMode,
       subject,
       toEmail: params.toEmail,
     })
@@ -482,6 +490,36 @@ function getInboxEmailAddress(inbox: typeof inboxes.$inferSelect) {
 
 function getDefaultInboxEmailAddress(inbox: typeof inboxes.$inferSelect) {
   return `${inbox.defaultLocalPart}@clankr.email`
+}
+
+function buildDebugTestHeaders(fromEmail: string, headerMode: TestEmailHeaderMode): Record<string, string> | undefined {
+  const [, domain = 'clankr.email'] = fromEmail.split('@')
+  const messageId = `<${createMessageId()}@${domain}>`
+  const referenceId = `<debug-root@${domain}>`
+
+  switch (headerMode) {
+    case 'message-id':
+      return {
+        'Message-ID': messageId,
+      }
+    case 'in-reply-to':
+      return {
+        'In-Reply-To': referenceId,
+      }
+    case 'references':
+      return {
+        References: referenceId,
+      }
+    case 'all':
+      return {
+        'In-Reply-To': referenceId,
+        'Message-ID': messageId,
+        References: referenceId,
+      }
+    case 'none':
+    default:
+      return undefined
+  }
 }
 
 function createInternetMessageId(messageId: string, fromEmail: string) {

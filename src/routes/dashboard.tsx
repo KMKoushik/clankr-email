@@ -59,7 +59,9 @@ type MessageListResult = Awaited<ReturnType<typeof rpcClient.threads.listMessage
 type MessageSummary = MessageListResult['items'][number]
 type MessageDetail = Awaited<ReturnType<typeof rpcClient.messages.get>>
 type SendMessageInput = Parameters<typeof rpcClient.messages.send>[0]
+type SendTestEmailInput = Parameters<typeof rpcClient.messages.sendTest>[0]
 type SendTestEmailResult = Awaited<ReturnType<typeof rpcClient.messages.sendTest>>
+type TestEmailHeaderMode = SendTestEmailInput['headerMode']
 
 function DashboardPage() {
   const queryClient = useQueryClient()
@@ -72,6 +74,7 @@ function DashboardPage() {
   const [aliasDraft, setAliasDraft] = useState('')
   const [composeState, setComposeState] = useState<ComposeState | null>(null)
   const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null)
+  const [testHeaderMode, setTestHeaderMode] = useState<TestEmailHeaderMode>('none')
 
   useEffect(() => {
     setIsClient(true)
@@ -259,7 +262,7 @@ function DashboardPage() {
     orpc.messages.sendTest.mutationOptions({
       onSuccess: (result: SendTestEmailResult) => {
         setActionNotice({
-          text: `Test email sent to ${result.toEmail} from ${result.fromEmail}.`,
+          text: `Test email sent to ${result.toEmail} from ${result.fromEmail} using ${result.headerMode} headers.`,
           tone: 'success',
         })
       },
@@ -316,29 +319,45 @@ function DashboardPage() {
 
               <div className="flex flex-col gap-3 lg:min-w-[34rem]">
                 <div className="flex justify-start lg:justify-end">
-                  <Button
-                    disabled={sendTestEmailMutation.isPending || !selectedInboxId}
-                    onClick={() => {
-                      setActionNotice(null)
-                      if (!selectedInboxId) {
-                        return
-                      }
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Select onValueChange={(value) => setTestHeaderMode(value as TestEmailHeaderMode)} value={testHeaderMode}>
+                      <SelectTrigger className="w-full sm:w-[14rem]">
+                        <SelectValue placeholder="Header mode" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No headers</SelectItem>
+                        <SelectItem value="message-id">Message-ID only</SelectItem>
+                        <SelectItem value="in-reply-to">In-Reply-To only</SelectItem>
+                        <SelectItem value="references">References only</SelectItem>
+                        <SelectItem value="all">All headers</SelectItem>
+                      </SelectContent>
+                    </Select>
 
-                      sendTestEmailMutation.mutate({
-                        inboxId: selectedInboxId,
-                      })
-                    }}
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    {sendTestEmailMutation.isPending ? (
-                      <LoaderCircle className="size-4 animate-spin" />
-                    ) : (
-                      <FlaskConical className="size-4" />
-                    )}
-                    Send u_ test email
-                  </Button>
+                    <Button
+                      disabled={sendTestEmailMutation.isPending || !selectedInboxId}
+                      onClick={() => {
+                        setActionNotice(null)
+                        if (!selectedInboxId) {
+                          return
+                        }
+
+                        sendTestEmailMutation.mutate({
+                          headerMode: testHeaderMode,
+                          inboxId: selectedInboxId,
+                        })
+                      }}
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      {sendTestEmailMutation.isPending ? (
+                        <LoaderCircle className="size-4 animate-spin" />
+                      ) : (
+                        <FlaskConical className="size-4" />
+                      )}
+                      Send u_ test email
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-3">

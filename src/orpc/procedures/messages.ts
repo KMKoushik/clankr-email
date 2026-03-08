@@ -79,6 +79,7 @@ export const messageRouter = {
     .output(sendTestEmailResultSchema)
     .handler(async ({ context, input }) => {
       return sendSignedInUserTestEmail({
+        headerMode: input.headerMode,
         inboxId: input.inboxId,
         userId: context.session.user.id,
         toEmail: context.session.user.email,
