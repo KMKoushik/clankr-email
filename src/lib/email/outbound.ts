@@ -213,6 +213,15 @@ export async function sendMessage(params: {
       sentAt,
     }
   } catch (error) {
+    console.error('outbound_email_provider_rejected', {
+      error,
+      fromEmail,
+      inboxId: input.inboxId,
+      messageId,
+      subject: input.subject,
+      to: input.to,
+    })
+
     const mappedError = mapSendProviderError(error)
 
     statusUpdate = {
