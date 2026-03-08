@@ -8,8 +8,9 @@ const fetch = createStartHandler(defaultStreamHandler)
 export default {
   fetch,
   async email(message: ForwardableEmailMessage, env: Env, ctx: ExecutionContext) {
+    void env
     void ctx
-    await handleInboundEmail(message, env)
+    await handleInboundEmail(message)
   },
   async queue(batch: MessageBatch<EmailEvent>) {
     for (const message of batch.messages) {

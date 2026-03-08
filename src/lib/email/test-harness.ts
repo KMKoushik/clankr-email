@@ -15,6 +15,7 @@ type StoredObject = {
 }
 
 type TestHarnessEnv = Pick<Env, 'APP_DB'> & {
+  EMAIL: Pick<SendEmail, 'send'>
   EMAIL_EVENTS: Pick<Queue<EmailEvent>, 'send'>
   EMAIL_STORAGE: Pick<R2Bucket, 'put'>
 }
@@ -29,9 +30,21 @@ export class TestQueue<T = unknown> {
 
 export class TestEmailBinding {
   readonly sent: unknown[] = []
+  private nextError: unknown | null = null
+
+  failWith(error: unknown) {
+    this.nextError = error
+  }
 
   async send(message: unknown) {
     this.sent.push(message)
+
+    if (this.nextError) {
+      const error = this.nextError
+      this.nextError = null
+
+      throw error
+    }
 
     return {
       messageId: `test-email-${this.sent.length}`,
@@ -182,6 +195,7 @@ export function createEmailTestHarness(): EmailTestHarness {
     email,
     env: {
       APP_DB: appDb.$client,
+      EMAIL: email,
       EMAIL_EVENTS: queue,
       EMAIL_STORAGE: storage,
     },

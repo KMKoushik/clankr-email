@@ -1,4 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+vi.mock('#/lib/runtime', () => ({
+  getDb() {
+    throw new Error('getDb should not be called in the test harness smoke test.')
+  },
+  getWorkerEnv() {
+    throw new Error('getWorkerEnv should not be called in the test harness smoke test.')
+  },
+}))
 
 import { createMessageReceivedEvent } from './events'
 import { createEmailTestHarness, createUserRecord } from './test-harness'
