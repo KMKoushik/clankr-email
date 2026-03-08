@@ -150,48 +150,46 @@ export async function sendMessage(params: {
     )
   }
 
-  const pendingMessage = await database.transaction(async (tx) => {
-    const threadId = await ensureThread(tx, {
-      inboxId: input.inboxId,
-      participantHash,
-      replyContext,
-      sentAt,
-      subject: input.subject,
-    })
-
-    await tx.insert(emailMessages).values({
-      id: messageId,
-      inboxId: input.inboxId,
-      threadId,
-      direction: 'outbound',
-      providerMessageId: null,
-      internetMessageId,
-      fromEmail,
-      toEmailsJson: JSON.stringify(input.to),
-      ccEmailsJson: JSON.stringify(input.cc),
-      bccEmailsJson: JSON.stringify(input.bcc),
-      subject: input.subject,
-      snippet: createSnippet(input.text, input.html),
-      textBody: bodyStorage.textBody,
-      htmlBody: bodyStorage.htmlBody,
-      bodyStorageMode: bodyStorage.mode,
-      rawMimeR2Key: null,
-      oversizedBodyR2Key: bodyStorage.oversizedBodyR2Key,
-      bodySizeBytes: bodyStorage.bodySizeBytes,
-      status: 'pending',
-      errorCode: null,
-      errorMessage: null,
-      sentAt: null,
-      receivedAt: null,
-    })
-
-    return {
-      id: messageId,
-      inboxId: input.inboxId,
-      threadId,
-      internetMessageId,
-    }
+  const threadId = await ensureThread(database, {
+    inboxId: input.inboxId,
+    participantHash,
+    replyContext,
+    sentAt,
+    subject: input.subject,
   })
+
+  await database.insert(emailMessages).values({
+    id: messageId,
+    inboxId: input.inboxId,
+    threadId,
+    direction: 'outbound',
+    providerMessageId: null,
+    internetMessageId,
+    fromEmail,
+    toEmailsJson: JSON.stringify(input.to),
+    ccEmailsJson: JSON.stringify(input.cc),
+    bccEmailsJson: JSON.stringify(input.bcc),
+    subject: input.subject,
+    snippet: createSnippet(input.text, input.html),
+    textBody: bodyStorage.textBody,
+    htmlBody: bodyStorage.htmlBody,
+    bodyStorageMode: bodyStorage.mode,
+    rawMimeR2Key: null,
+    oversizedBodyR2Key: bodyStorage.oversizedBodyR2Key,
+    bodySizeBytes: bodyStorage.bodySizeBytes,
+    status: 'pending',
+    errorCode: null,
+    errorMessage: null,
+    sentAt: null,
+    receivedAt: null,
+  })
+
+  const pendingMessage = {
+    id: messageId,
+    inboxId: input.inboxId,
+    threadId,
+    internetMessageId,
+  }
 
   let statusUpdate: SendMessageStatusUpdate
 

@@ -37,8 +37,19 @@ type InboundEmailMessage = Pick<ForwardableEmailMessage, 'from' | 'raw' | 'setRe
 export async function handleInboundEmail(message: InboundEmailMessage): Promise<InboundEmailResult> {
   const localPart = getLocalPart(message.to)
 
+  console.log('inbound_email_resolved_recipient', {
+    from: message.from,
+    localPart,
+    to: message.to,
+  })
+
   if (!localPart) {
     message.setReject('Unknown inbox')
+
+    console.warn('inbound_email_invalid_recipient', {
+      from: message.from,
+      to: message.to,
+    })
 
     return {
       status: 'rejected',
@@ -53,6 +64,12 @@ export async function handleInboundEmail(message: InboundEmailMessage): Promise<
   if (!inbox) {
     message.setReject('Unknown inbox')
 
+    console.warn('inbound_email_unknown_inbox', {
+      from: message.from,
+      localPart,
+      to: message.to,
+    })
+
     return {
       status: 'rejected',
       reason: 'unknown-inbox',
@@ -62,6 +79,13 @@ export async function handleInboundEmail(message: InboundEmailMessage): Promise<
   const rawEmail = await readRawEmail(message.raw)
   const parsedEmail = await PostalMime.parse(rawEmail)
   const internetMessageId = normalizeMessageId(parsedEmail.messageId)
+
+  console.log('inbound_email_inbox_found', {
+    inboxId: inbox.id,
+    internetMessageId,
+    rawSizeBytes: rawEmail.byteLength,
+    subject: parsedEmail.subject ?? '',
+  })
 
   if (internetMessageId) {
     const [existingMessage] = await db
@@ -79,6 +103,13 @@ export async function handleInboundEmail(message: InboundEmailMessage): Promise<
       .limit(1)
 
     if (existingMessage) {
+      console.log('inbound_email_duplicate_detected', {
+        inboxId: inbox.id,
+        internetMessageId,
+        messageId: existingMessage.id,
+        threadId: existingMessage.threadId,
+      })
+
       return {
         status: 'duplicate',
         inboxId: inbox.id,
@@ -111,58 +142,60 @@ export async function handleInboundEmail(message: InboundEmailMessage): Promise<
     )
   }
 
-  const threadId = await db.transaction(async (tx) => {
-    const existingThreadId = await findExistingThreadId(tx, {
+  const existingThreadId = await findExistingThreadId(db, {
+    inboxId: inbox.id,
+    internetMessageIds: collectThreadReferenceIds(parsedEmail),
+    participantHash,
+    subjectNormalized: normalizedSubject,
+  })
+
+  const threadId = existingThreadId ?? createThreadId()
+
+  if (!existingThreadId) {
+    await db.insert(emailThreads).values({
+      id: threadId,
       inboxId: inbox.id,
-      internetMessageIds: collectThreadReferenceIds(parsedEmail),
-      participantHash,
       subjectNormalized: normalizedSubject,
+      participantHash,
+      lastMessageAt: receivedAt,
     })
+  } else {
+    await db
+      .update(emailThreads)
+      .set({ lastMessageAt: receivedAt })
+      .where(eq(emailThreads.id, threadId))
+  }
 
-    const nextThreadId = existingThreadId ?? createThreadId()
+  await db.insert(emailMessages).values({
+    id: messageId,
+    inboxId: inbox.id,
+    threadId,
+    direction: 'inbound',
+    providerMessageId: null,
+    internetMessageId,
+    fromEmail,
+    toEmailsJson: JSON.stringify(toEmails),
+    ccEmailsJson: JSON.stringify(ccEmails),
+    bccEmailsJson: JSON.stringify([]),
+    subject,
+    snippet: createSnippet(parsedEmail.text, parsedEmail.html),
+    textBody: bodyStorage.textBody,
+    htmlBody: bodyStorage.htmlBody,
+    bodyStorageMode: bodyStorage.mode,
+    rawMimeR2Key: rawMimeKey,
+    oversizedBodyR2Key: bodyStorage.oversizedBodyR2Key,
+    bodySizeBytes: bodyStorage.bodySizeBytes,
+    status: 'received',
+    errorCode: null,
+    errorMessage: null,
+    sentAt: null,
+    receivedAt,
+  })
 
-    if (!existingThreadId) {
-      await tx.insert(emailThreads).values({
-        id: nextThreadId,
-        inboxId: inbox.id,
-        subjectNormalized: normalizedSubject,
-        participantHash,
-        lastMessageAt: receivedAt,
-      })
-    } else {
-      await tx
-        .update(emailThreads)
-        .set({ lastMessageAt: receivedAt })
-        .where(eq(emailThreads.id, nextThreadId))
-    }
-
-    await tx.insert(emailMessages).values({
-      id: messageId,
-      inboxId: inbox.id,
-      threadId: nextThreadId,
-      direction: 'inbound',
-      providerMessageId: null,
-      internetMessageId,
-      fromEmail,
-      toEmailsJson: JSON.stringify(toEmails),
-      ccEmailsJson: JSON.stringify(ccEmails),
-      bccEmailsJson: JSON.stringify([]),
-      subject,
-      snippet: createSnippet(parsedEmail.text, parsedEmail.html),
-      textBody: bodyStorage.textBody,
-      htmlBody: bodyStorage.htmlBody,
-      bodyStorageMode: bodyStorage.mode,
-      rawMimeR2Key: rawMimeKey,
-      oversizedBodyR2Key: bodyStorage.oversizedBodyR2Key,
-      bodySizeBytes: bodyStorage.bodySizeBytes,
-      status: 'received',
-      errorCode: null,
-      errorMessage: null,
-      sentAt: null,
-      receivedAt,
-    })
-
-    return nextThreadId
+  console.log('inbound_email_persisted', {
+    inboxId: inbox.id,
+    messageId,
+    threadId,
   })
 
   await env.EMAIL_EVENTS.send(

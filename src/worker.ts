@@ -10,7 +10,28 @@ export default {
   async email(message: ForwardableEmailMessage, env: Env, ctx: ExecutionContext) {
     void env
     void ctx
-    await handleInboundEmail(message)
+
+    console.log('inbound_email_received', {
+      from: message.from,
+      to: message.to,
+    })
+
+    try {
+      const result = await handleInboundEmail(message)
+
+      console.log('inbound_email_processed', {
+        result,
+        to: message.to,
+      })
+    } catch (error) {
+      console.error('inbound_email_failed', {
+        error,
+        from: message.from,
+        to: message.to,
+      })
+
+      throw error
+    }
   },
   async queue(batch: MessageBatch<EmailEvent>) {
     for (const message of batch.messages) {
