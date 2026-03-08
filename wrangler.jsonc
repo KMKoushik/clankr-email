@@ -21,6 +21,7 @@
   "send_email": [
     {
       "name": "EMAIL",
+      "remote": true,
     },
   ],
   "r2_buckets": [
