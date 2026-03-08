@@ -1,13 +1,13 @@
 import { and, asc, desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 
+import { getDb, getWorkerEnv } from '#/lib/runtime'
 import type { AppDb } from '#/db/index'
 import { emailMessages, emailThreads, inboxes } from '#/db/schema'
 
 import {
   createMessageSentAcceptedEvent,
   createMessageSentFailedEvent,
-  type EmailEvent,
 } from './events'
 import { createMessageId, createThreadId } from './ids'
 import { getInboxForUser } from './inboxes'
@@ -65,12 +65,6 @@ export const sendMessageInputSchema = z
     }
   })
 
-type OutboundEmailEnv = {
-  EMAIL: Pick<SendEmail, 'send'>
-  EMAIL_EVENTS: Pick<Queue<EmailEvent>, 'send'>
-  EMAIL_STORAGE: Pick<R2Bucket, 'put'>
-}
-
 type ThreadDatabase = Pick<AppDb, 'insert' | 'select' | 'update'>
 
 export type SendMessageInput = z.input<typeof sendMessageInputSchema>
@@ -92,16 +86,14 @@ export class SendMessageOwnershipError extends Error {}
 
 export class SendMessageThreadNotFoundError extends Error {}
 
-export async function sendMessage(
-  database: AppDb,
-  env: OutboundEmailEnv,
-  params: {
-    userId: string
-    input: SendMessageInput
-  },
-): Promise<SendMessageResult> {
+export async function sendMessage(params: {
+  userId: string
+  input: SendMessageInput
+}): Promise<SendMessageResult> {
+  const database = getDb()
+  const env = getWorkerEnv() as Pick<Env, 'EMAIL' | 'EMAIL_EVENTS' | 'EMAIL_STORAGE'>
   const input = validateSendMessageInput(params.input)
-  const inbox = await getInboxForUser(database, params.userId, input.inboxId)
+  const inbox = await getInboxForUser(params.userId, input.inboxId)
 
   if (!inbox || !inbox.isActive) {
     throw new SendMessageOwnershipError('Inbox not found.')
@@ -118,7 +110,7 @@ export async function sendMessage(
     ...input.cc,
   ])
   const replyContext = input.replyToThreadId
-    ? await getReplyContext(database, input.inboxId, input.replyToThreadId)
+    ? await getReplyContext(input.inboxId, input.replyToThreadId)
     : null
 
   if (input.replyToThreadId && !replyContext) {
@@ -264,7 +256,8 @@ function validateSendMessageInput(input: SendMessageInput) {
   throw new SendMessageValidationError(parsed.error.issues[0]?.message ?? 'Invalid message payload.')
 }
 
-async function getReplyContext(database: AppDb, inboxId: string, threadId: string) {
+async function getReplyContext(inboxId: string, threadId: string) {
+  const database = getDb()
   const [thread] = await database
     .select({
       id: emailThreads.id,

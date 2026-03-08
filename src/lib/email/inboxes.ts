@@ -1,123 +1,119 @@
-import { and, asc, eq, ne } from "drizzle-orm";
+import { and, asc, eq, ne } from 'drizzle-orm'
 
-import type { AppDb } from "#/db/index";
-import { inboxes } from "#/db/schema";
+import { getDb } from '#/lib/runtime'
+import { inboxes } from '#/db/schema'
 
-import { createInboxId } from "./ids";
+import { createInboxId } from './ids'
 
 const RESERVED_INBOX_ALIASES = new Set([
-  "abuse",
-  "admin",
-  "billing",
-  "contact",
-  "help",
-  "hostmaster",
-  "info",
-  "marketing",
-  "no-reply",
-  "noreply",
-  "postmaster",
-  "privacy",
-  "root",
-  "sales",
-  "security",
-  "support",
-  "system",
-  "webmaster",
-  "koushik",
-  "kdawg",
-]);
+  'abuse',
+  'admin',
+  'billing',
+  'contact',
+  'help',
+  'hostmaster',
+  'info',
+  'marketing',
+  'no-reply',
+  'noreply',
+  'postmaster',
+  'privacy',
+  'root',
+  'sales',
+  'security',
+  'support',
+  'system',
+  'webmaster',
+  'koushik',
+  'kdawg',
+])
 
-const INBOX_ALIAS_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const INBOX_ALIAS_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 export class InboxAliasValidationError extends Error {}
 
 export class InboxAliasConflictError extends Error {}
 
 export function normalizeInboxAlias(alias: string) {
-  return alias.trim().toLowerCase();
+  return alias.trim().toLowerCase()
 }
 
 export function validateInboxAlias(alias: string) {
-  const normalizedAlias = normalizeInboxAlias(alias);
+  const normalizedAlias = normalizeInboxAlias(alias)
 
   if (normalizedAlias.length < 3 || normalizedAlias.length > 32) {
-    throw new InboxAliasValidationError(
-      "Inbox aliases must be 3-32 characters long.",
-    );
+    throw new InboxAliasValidationError('Inbox aliases must be 3-32 characters long.')
   }
 
   if (!INBOX_ALIAS_PATTERN.test(normalizedAlias)) {
     throw new InboxAliasValidationError(
-      "Inbox aliases may only use lowercase letters, numbers, and hyphens.",
-    );
+      'Inbox aliases may only use lowercase letters, numbers, and hyphens.',
+    )
   }
 
   if (RESERVED_INBOX_ALIASES.has(normalizedAlias)) {
-    throw new InboxAliasValidationError("That inbox alias is reserved.");
+    throw new InboxAliasValidationError('That inbox alias is reserved.')
   }
 
-  return normalizedAlias;
+  return normalizedAlias
 }
 
 export function createDefaultInboxLocalPart(inboxId: string) {
-  if (!inboxId.startsWith("in_")) {
-    throw new Error('Expected inbox IDs to start with "in_".');
+  if (!inboxId.startsWith('in_')) {
+    throw new Error('Expected inbox IDs to start with "in_".')
   }
 
-  return `u_${inboxId.slice(3)}`;
+  return `u_${inboxId.slice(3)}`
 }
 
-export async function listInboxesForUser(database: AppDb, userId: string) {
-  return database
+export async function listInboxesForUser(userId: string) {
+  return getDb()
     .select()
     .from(inboxes)
     .where(eq(inboxes.userId, userId))
-    .orderBy(asc(inboxes.createdAt), asc(inboxes.id));
+    .orderBy(asc(inboxes.createdAt), asc(inboxes.id))
 }
 
-export async function getInboxForUser(
-  database: AppDb,
-  userId: string,
-  inboxId: string,
-) {
-  const [inbox] = await database
+export async function getInboxForUser(userId: string, inboxId: string) {
+  const [inbox] = await getDb()
     .select()
     .from(inboxes)
     .where(and(eq(inboxes.userId, userId), eq(inboxes.id, inboxId)))
-    .limit(1);
+    .limit(1)
 
-  return inbox ?? null;
+  return inbox ?? null
 }
 
-export async function createInboxForUser(database: AppDb, userId: string) {
-  const inboxId = createInboxId();
+export async function createInboxForUser(userId: string) {
+  const nextDb = getDb()
+  const inboxId = createInboxId()
 
-  await database.insert(inboxes).values({
+  await nextDb.insert(inboxes).values({
     id: inboxId,
     userId,
     defaultLocalPart: createDefaultInboxLocalPart(inboxId),
     customLocalPart: null,
     isActive: true,
-  });
+  })
 
-  const createdInbox = await getInboxForUser(database, userId, inboxId);
+  const createdInbox = await getInboxForUser(userId, inboxId)
 
   if (!createdInbox) {
-    throw new Error("Failed to create inbox.");
+    throw new Error('Failed to create inbox.')
   }
 
-  return createdInbox;
+  return createdInbox
 }
 
-export async function findInboxByLocalPart(database: AppDb, localPart: string) {
+export async function findInboxByLocalPart(localPart: string) {
+  const nextDb = getDb()
   const normalizedLocalPart = localPart.trim().toLowerCase()
 
   if (!normalizedLocalPart) {
     return null
   }
 
-  const [customInbox] = await database
+  const [customInbox] = await nextDb
     .select()
     .from(inboxes)
     .where(
@@ -132,7 +128,7 @@ export async function findInboxByLocalPart(database: AppDb, localPart: string) {
     return customInbox
   }
 
-  const [defaultInbox] = await database
+  const [defaultInbox] = await nextDb
     .select()
     .from(inboxes)
     .where(
@@ -146,32 +142,33 @@ export async function findInboxByLocalPart(database: AppDb, localPart: string) {
   return defaultInbox ?? null
 }
 
-export async function provisionInitialInbox(database: AppDb, userId: string) {
-  const [existingInbox] = await database
+export async function provisionInitialInbox(userId: string) {
+  const nextDb = getDb()
+  const [existingInbox] = await nextDb
     .select()
     .from(inboxes)
     .where(eq(inboxes.userId, userId))
-    .limit(1);
+    .limit(1)
 
-  return existingInbox ?? createInboxForUser(database, userId);
+  return existingInbox ?? createInboxForUser(userId)
 }
 
 export async function updateInboxAliasForUser(
-  database: AppDb,
   userId: string,
   inboxId: string,
   alias: string | null,
 ) {
-  const inbox = await getInboxForUser(database, userId, inboxId);
+  const nextDb = getDb()
+  const inbox = await getInboxForUser(userId, inboxId)
 
   if (!inbox) {
-    return null;
+    return null
   }
 
-  const normalizedAlias = alias === null ? null : validateInboxAlias(alias);
+  const normalizedAlias = alias === null ? null : validateInboxAlias(alias)
 
   if (normalizedAlias) {
-    const [existingAlias] = await database
+    const [existingAlias] = await nextDb
       .select({ id: inboxes.id })
       .from(inboxes)
       .where(
@@ -180,19 +177,19 @@ export async function updateInboxAliasForUser(
           ne(inboxes.id, inboxId),
         ),
       )
-      .limit(1);
+      .limit(1)
 
     if (existingAlias) {
-      throw new InboxAliasConflictError("That inbox alias is already taken.");
+      throw new InboxAliasConflictError('That inbox alias is already taken.')
     }
   }
 
-  await database
+  await nextDb
     .update(inboxes)
     .set({ customLocalPart: normalizedAlias })
-    .where(and(eq(inboxes.userId, userId), eq(inboxes.id, inboxId)));
+    .where(and(eq(inboxes.userId, userId), eq(inboxes.id, inboxId)))
 
-  return getInboxForUser(database, userId, inboxId);
+  return getInboxForUser(userId, inboxId)
 }
 
 export function serializeInbox(inbox: typeof inboxes.$inferSelect) {
@@ -204,5 +201,5 @@ export function serializeInbox(inbox: typeof inboxes.$inferSelect) {
     isActive: inbox.isActive,
     createdAt: inbox.createdAt.toISOString(),
     updatedAt: inbox.updatedAt.toISOString(),
-  };
+  }
 }

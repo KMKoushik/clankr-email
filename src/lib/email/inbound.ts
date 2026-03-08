@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray } from 'drizzle-orm'
 import PostalMime, { addressParser, type Address, type Email, type RawEmail } from 'postal-mime'
 
-import { createDb } from '#/db/index'
+import { getDb, getWorkerEnv } from '#/lib/runtime'
 import { emailMessages, emailThreads } from '#/db/schema'
 
 import { createMessageReceivedEvent } from './events'
@@ -31,17 +31,10 @@ export type InboundEmailResult =
       reason: 'invalid-recipient' | 'unknown-inbox'
     }
 
-type ThreadLookupDatabase = Pick<ReturnType<typeof createDb>, 'select'>
-type InboundEmailEnv = Pick<Env, 'APP_DB'> & {
-  EMAIL_EVENTS: Pick<Queue<ReturnType<typeof createMessageReceivedEvent>>, 'send'>
-  EMAIL_STORAGE: Pick<R2Bucket, 'put'>
-}
+type ThreadLookupDatabase = Pick<ReturnType<typeof getDb>, 'select'>
 type InboundEmailMessage = Pick<ForwardableEmailMessage, 'from' | 'raw' | 'setReject' | 'to'>
 
-export async function handleInboundEmail(
-  message: InboundEmailMessage,
-  env: InboundEmailEnv,
-): Promise<InboundEmailResult> {
+export async function handleInboundEmail(message: InboundEmailMessage): Promise<InboundEmailResult> {
   const localPart = getLocalPart(message.to)
 
   if (!localPart) {
@@ -53,8 +46,9 @@ export async function handleInboundEmail(
     }
   }
 
-  const db = createDb(env.APP_DB)
-  const inbox = await findInboxByLocalPart(db, localPart)
+  const db = getDb()
+  const env = getWorkerEnv()
+  const inbox = await findInboxByLocalPart(localPart)
 
   if (!inbox) {
     message.setReject('Unknown inbox')

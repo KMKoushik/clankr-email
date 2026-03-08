@@ -17,7 +17,7 @@ export const auth = betterAuth({
             return
           }
 
-          await provisionInitialInbox(db, user.id)
+          await provisionInitialInbox(user.id)
         },
       },
     },

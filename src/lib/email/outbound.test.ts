@@ -1,7 +1,28 @@
 import { eq } from 'drizzle-orm'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { emailMessages, emailThreads } from '#/db/schema'
+
+const testState = vi.hoisted(() => ({
+  harness: null as EmailTestHarness | null,
+}))
+
+vi.mock('#/lib/runtime', () => ({
+  getDb() {
+    if (!testState.harness) {
+      throw new Error('Email test harness not initialized.')
+    }
+
+    return testState.harness.db
+  },
+  getWorkerEnv() {
+    if (!testState.harness) {
+      throw new Error('Email test harness not initialized.')
+    }
+
+    return testState.harness.env
+  },
+}))
 
 import {
   MAX_OUTBOUND_BODY_BYTES,
@@ -16,10 +37,12 @@ describe('outbound email pipeline', () => {
 
   beforeEach(() => {
     harness = createEmailTestHarness()
+    testState.harness = harness
   })
 
   afterEach(() => {
     harness.cleanup()
+    testState.harness = null
   })
 
   it('sends an outbound message, persists it, and emits an accepted event', async () => {
@@ -28,7 +51,7 @@ describe('outbound email pipeline', () => {
       customLocalPart: 'agent',
     })
 
-    const result = await sendMessage(harness.db, harness.env, {
+    const result = await sendMessage({
       userId,
       input: {
         inboxId,
@@ -90,7 +113,7 @@ describe('outbound email pipeline', () => {
     const inboxId = await createInboxRecord(harness.db, ownerUserId)
 
     await expect(
-      sendMessage(harness.db, harness.env, {
+      sendMessage({
         userId: otherUserId,
         input: {
           inboxId,
@@ -110,7 +133,7 @@ describe('outbound email pipeline', () => {
     const inboxId = await createInboxRecord(harness.db, userId)
 
     await expect(
-      sendMessage(harness.db, harness.env, {
+      sendMessage({
         userId,
         input: {
           inboxId,
@@ -122,7 +145,7 @@ describe('outbound email pipeline', () => {
     ).rejects.toBeInstanceOf(SendMessageValidationError)
 
     await expect(
-      sendMessage(harness.db, harness.env, {
+      sendMessage({
         userId,
         input: {
           inboxId,
@@ -149,7 +172,7 @@ describe('outbound email pipeline', () => {
       }),
     )
 
-    const result = await sendMessage(harness.db, harness.env, {
+    const result = await sendMessage({
       userId,
       input: {
         inboxId,
@@ -193,7 +216,7 @@ describe('outbound email pipeline', () => {
       customLocalPart: 'agent',
     })
 
-    const firstResult = await sendMessage(harness.db, harness.env, {
+    const firstResult = await sendMessage({
       userId,
       input: {
         inboxId,
@@ -207,7 +230,7 @@ describe('outbound email pipeline', () => {
       .from(emailMessages)
       .where(eq(emailMessages.id, firstResult.id))
 
-    const secondResult = await sendMessage(harness.db, harness.env, {
+    const secondResult = await sendMessage({
       userId,
       input: {
         inboxId,

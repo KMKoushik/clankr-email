@@ -1,9 +1,6 @@
-import { env } from 'cloudflare:workers'
-
 import { ORPCError } from '@orpc/server'
 import { z } from 'zod'
 
-import { db } from '#/db/client'
 import {
   sendMessage,
   sendMessageInputSchema,
@@ -35,7 +32,7 @@ export const messageRouter = {
     .output(sendMessageResultSchema)
     .handler(async ({ context, input }) => {
       try {
-        return await sendMessage(db, env, {
+        return await sendMessage({
           userId: context.session.user.id,
           input,
         })

@@ -1,7 +1,6 @@
 import { ORPCError } from '@orpc/server'
 import { z } from 'zod'
 
-import { db } from '#/db/client'
 import {
   InboxAliasConflictError,
   InboxAliasValidationError,
@@ -33,7 +32,7 @@ export const inboxRouter = {
     .input(z.object({}).optional())
     .output(inboxSchema)
     .handler(async ({ context }) => {
-      const inbox = await createInboxForUser(db, context.session.user.id)
+      const inbox = await createInboxForUser(context.session.user.id)
 
       return serializeInbox(inbox)
     }),
@@ -51,7 +50,7 @@ export const inboxRouter = {
     )
     .output(inboxSchema)
     .handler(async ({ context, input }) => {
-      const inbox = await getInboxForUser(db, context.session.user.id, input.inboxId)
+      const inbox = await getInboxForUser(context.session.user.id, input.inboxId)
 
       if (!inbox) {
         throw new ORPCError('NOT_FOUND', {
@@ -70,7 +69,7 @@ export const inboxRouter = {
     })
     .output(z.array(inboxSchema))
     .handler(async ({ context }) => {
-      const inboxes = await listInboxesForUser(db, context.session.user.id)
+      const inboxes = await listInboxesForUser(context.session.user.id)
 
       return inboxes.map(serializeInbox)
     }),
@@ -90,12 +89,7 @@ export const inboxRouter = {
     .output(inboxSchema)
     .handler(async ({ context, input }) => {
       try {
-        const inbox = await updateInboxAliasForUser(
-          db,
-          context.session.user.id,
-          input.inboxId,
-          input.alias,
-        )
+        const inbox = await updateInboxAliasForUser(context.session.user.id, input.inboxId, input.alias)
 
         if (!inbox) {
           throw new ORPCError('NOT_FOUND', {

@@ -1,7 +1,28 @@
 import { desc } from 'drizzle-orm'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { emailMessages, emailThreads } from '#/db/schema'
+
+const testState = vi.hoisted(() => ({
+  harness: null as EmailTestHarness | null,
+}))
+
+vi.mock('#/lib/runtime', () => ({
+  getDb() {
+    if (!testState.harness) {
+      throw new Error('Email test harness not initialized.')
+    }
+
+    return testState.harness.db
+  },
+  getWorkerEnv() {
+    if (!testState.harness) {
+      throw new Error('Email test harness not initialized.')
+    }
+
+    return testState.harness.env
+  },
+}))
 
 import { handleInboundEmail, INLINE_BODY_LIMIT_BYTES } from './inbound'
 import { createInboundWorkerMessage, createMimeFixture } from './test-fixtures'
@@ -12,10 +33,12 @@ describe('inbound email pipeline', () => {
 
   beforeEach(() => {
     harness = createEmailTestHarness()
+    testState.harness = harness
   })
 
   afterEach(() => {
     harness.cleanup()
+    testState.harness = null
   })
 
   it('rejects unknown inboxes', async () => {
@@ -24,7 +47,7 @@ describe('inbound email pipeline', () => {
       to: 'missing@clankr.email',
     })
 
-    const result = await handleInboundEmail(message, harness.env)
+    const result = await handleInboundEmail(message)
 
     expect(result).toEqual({
       status: 'rejected',
@@ -50,7 +73,7 @@ describe('inbound email pipeline', () => {
       to: 'agent@clankr.email',
     })
 
-    const result = await handleInboundEmail(message, harness.env)
+    const result = await handleInboundEmail(message)
     const [storedMessage] = await harness.db.select().from(emailMessages)
 
     expect(result.status).toBe('accepted')
@@ -98,8 +121,8 @@ describe('inbound email pipeline', () => {
       to: 'agent@clankr.email',
     })
 
-    const firstResult = await handleInboundEmail(firstMessage.message, harness.env)
-    const secondResult = await handleInboundEmail(secondMessage.message, harness.env)
+    const firstResult = await handleInboundEmail(firstMessage.message)
+    const secondResult = await handleInboundEmail(secondMessage.message)
 
     expect(firstResult.status).toBe('accepted')
     if (firstResult.status !== 'accepted') {
@@ -126,7 +149,6 @@ describe('inbound email pipeline', () => {
         }).trim(),
         to: 'agent@clankr.email',
       }).message,
-      harness.env,
     )
 
     const secondResult = await handleInboundEmail(
@@ -138,7 +160,6 @@ describe('inbound email pipeline', () => {
         }).trim(),
         to: 'agent@clankr.email',
       }).message,
-      harness.env,
     )
 
     const threads = await harness.db.select().from(emailThreads).orderBy(desc(emailThreads.createdAt))
@@ -163,14 +184,12 @@ describe('inbound email pipeline', () => {
         raw: rawMime,
         to: 'agent@clankr.email',
       }).message,
-      harness.env,
     )
     const secondResult = await handleInboundEmail(
       createInboundWorkerMessage({
         raw: rawMime,
         to: 'agent@clankr.email',
       }).message,
-      harness.env,
     )
     const messages = await harness.db.select().from(emailMessages)
 
@@ -204,7 +223,6 @@ describe('inbound email pipeline', () => {
         }),
         to: 'agent@clankr.email',
       }).message,
-      harness.env,
     )
 
     const [storedMessage] = await harness.db.select().from(emailMessages)
