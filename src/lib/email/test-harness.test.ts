@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { createMessageReceivedEvent } from './events'
 import { createEmailTestHarness, createUserRecord } from './test-harness'
 
 describe('email test harness', () => {
@@ -12,11 +13,24 @@ describe('email test harness', () => {
       expect(userId).toBe('user_test_01')
 
       await harness.storage.put('fixtures/test.txt', 'hello harness')
-      await harness.queue.send({ ok: true })
+      await harness.queue.send(
+        createMessageReceivedEvent({
+          inboxId: 'in_test',
+          messageId: 'em_test',
+          threadId: 'th_test',
+        }),
+      )
       await harness.email.send({ subject: 'Harness' })
 
       expect(await (await harness.storage.get('fixtures/test.txt'))?.text()).toBe('hello harness')
-      expect(harness.queue.sent).toEqual([{ body: { ok: true }, options: undefined }])
+      expect(harness.queue.sent[0]?.body).toMatchObject({
+        type: 'message.received',
+        data: {
+          inboxId: 'in_test',
+          messageId: 'em_test',
+          threadId: 'th_test',
+        },
+      })
       expect(harness.email.sent).toEqual([{ subject: 'Harness' }])
     } finally {
       harness.cleanup()

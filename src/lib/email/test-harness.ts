@@ -2,9 +2,10 @@ import { readdirSync, readFileSync } from 'node:fs'
 
 import Database from 'better-sqlite3'
 
-import type { ClankrEmailEnv, EmailBinding, QueueBinding, QueueSendOptions, R2BucketLike, R2ObjectBodyLike, WorkerExecutionContext } from '#/lib/cloudflare'
 import { createDb, type AppDb } from '#/db/index'
 import { inboxes, user } from '#/db/schema'
+
+import type { EmailEvent } from './events'
 
 import { createInboxId } from './ids'
 import { createDefaultInboxLocalPart } from './inboxes'
@@ -13,7 +14,12 @@ type StoredObject = {
   body: Uint8Array
 }
 
-export class TestQueue<T = unknown> implements QueueBinding<T> {
+type TestHarnessEnv = Pick<Env, 'APP_DB'> & {
+  EMAIL_EVENTS: Pick<Queue<EmailEvent>, 'send'>
+  EMAIL_STORAGE: Pick<R2Bucket, 'put'>
+}
+
+export class TestQueue<T = unknown> {
   readonly sent: Array<{ body: T; options?: QueueSendOptions }> = []
 
   async send(body: T, options?: QueueSendOptions) {
@@ -21,19 +27,21 @@ export class TestQueue<T = unknown> implements QueueBinding<T> {
   }
 }
 
-export class TestEmailBinding implements EmailBinding {
+export class TestEmailBinding {
   readonly sent: unknown[] = []
 
   async send(message: unknown) {
     this.sent.push(message)
 
     return {
-      id: `test-email-${this.sent.length}`,
+      messageId: `test-email-${this.sent.length}`,
     }
   }
 }
 
-class TestR2ObjectBody implements R2ObjectBodyLike {
+type TestR2ObjectBodyLike = Pick<R2ObjectBody, 'arrayBuffer' | 'text'>
+
+class TestR2ObjectBody implements TestR2ObjectBodyLike {
   constructor(private readonly object: StoredObject) {}
 
   async arrayBuffer() {
@@ -45,7 +53,7 @@ class TestR2ObjectBody implements R2ObjectBodyLike {
   }
 }
 
-export class TestR2Bucket implements R2BucketLike {
+export class TestR2Bucket {
   readonly objects = new Map<string, StoredObject>()
 
   async get(key: string) {
@@ -54,16 +62,20 @@ export class TestR2Bucket implements R2BucketLike {
     return object ? new TestR2ObjectBody(object) : null
   }
 
-  async put(key: string, value: Parameters<R2BucketLike['put']>[1]) {
+  async put(key: string, value: Parameters<R2Bucket['put']>[1]) {
+    if (value === null) {
+      throw new Error('TestR2Bucket.put does not support null values.')
+    }
+
     this.objects.set(key, {
       body: await toUint8Array(value),
     })
 
-    return null
+    return null as unknown as R2Object
   }
 }
 
-export class TestExecutionContext implements WorkerExecutionContext {
+export class TestExecutionContext {
   readonly deferred: Promise<unknown>[] = []
 
   waitUntil(promise: Promise<unknown>) {
@@ -146,8 +158,8 @@ class TestD1Database {
 export type EmailTestHarness = {
   db: AppDb
   email: TestEmailBinding
-  env: ClankrEmailEnv
-  queue: TestQueue
+  env: TestHarnessEnv
+  queue: TestQueue<EmailEvent>
   ctx: TestExecutionContext
   sqlite: Database.Database
   storage: TestR2Bucket
@@ -159,9 +171,9 @@ export function createEmailTestHarness(): EmailTestHarness {
 
   applyAllMigrations(sqlite)
 
-  const appDb = createDb(new TestD1Database(sqlite) as Parameters<typeof createDb>[0])
+  const appDb = createDb(new TestD1Database(sqlite) as unknown as Parameters<typeof createDb>[0])
   const email = new TestEmailBinding()
-  const queue = new TestQueue()
+  const queue = new TestQueue<EmailEvent>()
   const storage = new TestR2Bucket()
   const ctx = new TestExecutionContext()
 
@@ -170,7 +182,6 @@ export function createEmailTestHarness(): EmailTestHarness {
     email,
     env: {
       APP_DB: appDb.$client,
-      EMAIL: email,
       EMAIL_EVENTS: queue,
       EMAIL_STORAGE: storage,
     },

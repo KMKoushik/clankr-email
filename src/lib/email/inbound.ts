@@ -1,7 +1,6 @@
 import { and, desc, eq, inArray } from 'drizzle-orm'
 import PostalMime, { addressParser, type Address, type Email, type RawEmail } from 'postal-mime'
 
-import type { ClankrEmailEnv, EmailWorkerMessage } from '#/lib/cloudflare'
 import { createDb } from '#/db/index'
 import { emailMessages, emailThreads } from '#/db/schema'
 
@@ -33,10 +32,15 @@ export type InboundEmailResult =
     }
 
 type ThreadLookupDatabase = Pick<ReturnType<typeof createDb>, 'select'>
+type InboundEmailEnv = Pick<Env, 'APP_DB'> & {
+  EMAIL_EVENTS: Pick<Queue<ReturnType<typeof createMessageReceivedEvent>>, 'send'>
+  EMAIL_STORAGE: Pick<R2Bucket, 'put'>
+}
+type InboundEmailMessage = Pick<ForwardableEmailMessage, 'from' | 'raw' | 'setReject' | 'to'>
 
 export async function handleInboundEmail(
-  message: EmailWorkerMessage,
-  env: ClankrEmailEnv,
+  message: InboundEmailMessage,
+  env: InboundEmailEnv,
 ): Promise<InboundEmailResult> {
   const localPart = getLocalPart(message.to)
 

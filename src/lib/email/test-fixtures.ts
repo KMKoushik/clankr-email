@@ -1,5 +1,3 @@
-import type { EmailWorkerMessage } from '#/lib/cloudflare'
-
 type MimeFixtureOptions = {
   date?: string
   from?: string
@@ -75,7 +73,7 @@ export function createInboundWorkerMessage(options: {
 }) {
   let rejectedWith: string | null = null
 
-  const message: EmailWorkerMessage = {
+  const message: Pick<ForwardableEmailMessage, 'from' | 'raw' | 'setReject' | 'to'> = {
     from: options.from ?? 'sender@example.com',
     to: options.to ?? 'agent@clankr.email',
     raw: createReadableStream(options.raw),
