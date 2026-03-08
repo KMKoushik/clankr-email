@@ -1,4 +1,3 @@
-import { env } from 'cloudflare:workers'
 import { drizzle } from 'drizzle-orm/d1'
 
 import * as schema from './schema.ts'
@@ -8,5 +7,3 @@ export function createDb(database: Parameters<typeof drizzle>[0]) {
 }
 
 export type AppDb = ReturnType<typeof createDb>
-
-export const db = createDb(env.APP_DB)

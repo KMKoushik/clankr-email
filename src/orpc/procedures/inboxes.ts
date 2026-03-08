@@ -1,7 +1,7 @@
 import { ORPCError } from '@orpc/server'
 import { z } from 'zod'
 
-import { db } from '#/db/index'
+import { db } from '#/db/client'
 import {
   InboxAliasConflictError,
   InboxAliasValidationError,
