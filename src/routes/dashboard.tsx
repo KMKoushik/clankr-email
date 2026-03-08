@@ -25,19 +25,7 @@ import {
 } from '#/components/ui/select'
 import { Textarea } from '#/components/ui/textarea'
 import { authClient } from '#/lib/auth-client'
-import {
-  createInbox,
-  getMessage,
-  listInboxes,
-  listThreadMessages,
-  listThreadsByInbox,
-  sendMessage,
-  updateInboxAlias,
-  type InboxRecord,
-  type MessageDetail,
-  type MessageSummary,
-  type SendMessageInput,
-} from '#/lib/dashboard-api'
+import { orpc, rpcClient } from '#/lib/orpc-client'
 import { cn } from '#/lib/utils'
 
 export const Route = createFileRoute('/dashboard')({
@@ -63,7 +51,13 @@ type ActionNotice = {
   text: string
 }
 
-const DASHBOARD_QUERY_KEY = ['dashboard'] as const
+type InboxRecord = Awaited<ReturnType<typeof rpcClient.inboxes.get>>
+type ThreadListResult = Awaited<ReturnType<typeof rpcClient.threads.listByInbox>>
+type ThreadSummary = ThreadListResult['items'][number]
+type MessageListResult = Awaited<ReturnType<typeof rpcClient.threads.listMessages>>
+type MessageSummary = MessageListResult['items'][number]
+type MessageDetail = Awaited<ReturnType<typeof rpcClient.messages.get>>
+type SendMessageInput = Parameters<typeof rpcClient.messages.send>[0]
 
 function DashboardPage() {
   const queryClient = useQueryClient()
@@ -83,53 +77,64 @@ function DashboardPage() {
 
   const isReady = isClient && Boolean(session?.user)
 
-  const inboxesQuery = useQuery({
-    enabled: isReady,
-    queryFn: listInboxes,
-    queryKey: [...DASHBOARD_QUERY_KEY, 'inboxes'],
-    staleTime: 5_000,
-  })
+  const inboxesQuery = useQuery(
+    orpc.inboxes.list.queryOptions({
+      enabled: isReady,
+      staleTime: 5_000,
+    }),
+  )
 
-  const inboxes = inboxesQuery.data ?? []
+  const inboxes: InboxRecord[] = inboxesQuery.data ?? []
   const selectedInbox = useMemo(
     () => inboxes.find((inbox) => inbox.id === selectedInboxId) ?? null,
     [inboxes, selectedInboxId],
   )
 
-  const threadsQuery = useQuery({
-    enabled: isReady && Boolean(selectedInboxId),
-    queryFn: () => listThreadsByInbox(selectedInboxId!),
-    queryKey: [...DASHBOARD_QUERY_KEY, 'threads', selectedInboxId],
-    staleTime: 3_000,
-  })
+  const threadsQuery = useQuery(
+    orpc.threads.listByInbox.queryOptions({
+      enabled: isReady && Boolean(selectedInboxId),
+      input: {
+        inboxId: selectedInboxId ?? '',
+        limit: 25,
+      },
+      staleTime: 3_000,
+    }),
+  )
 
-  const threads = threadsQuery.data?.items ?? []
+  const threads: ThreadSummary[] = threadsQuery.data?.items ?? []
   const selectedThread = useMemo(
     () => threads.find((thread) => thread.id === selectedThreadId) ?? null,
     [threads, selectedThreadId],
   )
 
-  const messagesQuery = useQuery({
-    enabled: isReady && Boolean(selectedThreadId),
-    queryFn: () => listThreadMessages(selectedThreadId!),
-    queryKey: [...DASHBOARD_QUERY_KEY, 'messages', selectedThreadId],
-    staleTime: 3_000,
-  })
+  const messagesQuery = useQuery(
+    orpc.threads.listMessages.queryOptions({
+      enabled: isReady && Boolean(selectedThreadId),
+      input: {
+        limit: 100,
+        threadId: selectedThreadId ?? '',
+      },
+      staleTime: 3_000,
+    }),
+  )
 
-  const threadMessages = messagesQuery.data?.items ?? []
+  const threadMessages: MessageSummary[] = messagesQuery.data?.items ?? []
   const selectedMessageSummary = useMemo(
     () => threadMessages.find((message) => message.id === selectedMessageId) ?? null,
     [threadMessages, selectedMessageId],
   )
 
-  const messageDetailQuery = useQuery({
-    enabled: isReady && Boolean(selectedMessageId),
-    queryFn: () => getMessage(selectedMessageId!),
-    queryKey: [...DASHBOARD_QUERY_KEY, 'message', selectedMessageId],
-    staleTime: 3_000,
-  })
+  const messageDetailQuery = useQuery(
+    orpc.messages.get.queryOptions({
+      enabled: isReady && Boolean(selectedMessageId),
+      input: {
+        messageId: selectedMessageId ?? '',
+      },
+      staleTime: 3_000,
+    }),
+  )
 
-  const selectedMessage = messageDetailQuery.data ?? null
+  const selectedMessage: MessageDetail | null = messageDetailQuery.data ?? null
 
   useEffect(() => {
     if (inboxes.length === 0) {
@@ -168,8 +173,8 @@ function DashboardPage() {
     setAliasDraft(selectedInbox?.customLocalPart ?? '')
   }, [selectedInbox?.customLocalPart, selectedInbox?.id])
 
-  const createInboxMutation = useMutation({
-    mutationFn: createInbox,
+  const createInboxMutation = useMutation(
+    orpc.inboxes.create.mutationOptions({
     onSuccess: async (createdInbox) => {
       setActionNotice({
         text: `Created ${getPrimaryInboxAddress(createdInbox)}.`,
@@ -177,13 +182,14 @@ function DashboardPage() {
       })
       setSelectedInboxId(createdInbox.id)
       await queryClient.invalidateQueries({
-        queryKey: [...DASHBOARD_QUERY_KEY, 'inboxes'],
+        queryKey: orpc.inboxes.list.key(),
       })
     },
-  })
+    }),
+  )
 
-  const updateAliasMutation = useMutation({
-    mutationFn: ({ alias, inboxId }: { alias: string | null; inboxId: string }) => updateInboxAlias(inboxId, alias),
+  const updateAliasMutation = useMutation(
+    orpc.inboxes.updateAlias.mutationOptions({
     onSuccess: async (updatedInbox) => {
       setActionNotice({
         text: updatedInbox.customLocalPart
@@ -192,7 +198,7 @@ function DashboardPage() {
         tone: 'success',
       })
       await queryClient.invalidateQueries({
-        queryKey: [...DASHBOARD_QUERY_KEY, 'inboxes'],
+        queryKey: orpc.inboxes.list.key(),
       })
     },
     onError: (error) => {
@@ -201,10 +207,11 @@ function DashboardPage() {
         tone: 'error',
       })
     },
-  })
+    }),
+  )
 
-  const sendMessageMutation = useMutation({
-    mutationFn: sendMessage,
+  const sendMessageMutation = useMutation(
+    orpc.messages.send.mutationOptions({
     onSuccess: async (result) => {
       setComposeState(null)
       setSelectedInboxId(result.inboxId)
@@ -219,22 +226,37 @@ function DashboardPage() {
 
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: [...DASHBOARD_QUERY_KEY, 'threads', result.inboxId],
+          queryKey: orpc.threads.listByInbox.queryKey({
+            input: {
+              inboxId: result.inboxId,
+              limit: 25,
+            },
+          }),
         }),
         queryClient.invalidateQueries({
-          queryKey: [...DASHBOARD_QUERY_KEY, 'messages', result.threadId],
+          queryKey: orpc.threads.listMessages.queryKey({
+            input: {
+              limit: 100,
+              threadId: result.threadId,
+            },
+          }),
         }),
         queryClient.invalidateQueries({
-          queryKey: [...DASHBOARD_QUERY_KEY, 'message', result.id],
+          queryKey: orpc.messages.get.queryKey({
+            input: {
+              messageId: result.id,
+            },
+          }),
         }),
       ])
     },
-  })
+    }),
+  )
 
   if (isPending) {
     return (
-      <main className="px-4 py-10 sm:py-14">
-        <div className="mx-auto grid max-w-7xl gap-4 xl:grid-cols-[320px_360px_minmax(0,1fr)]">
+      <main className="px-4 py-8 sm:px-6 lg:px-8 xl:px-10">
+        <div className="grid gap-5 xl:grid-cols-[22rem_28rem_minmax(0,1fr)]">
           <SkeletonPanel className="min-h-[24rem]" />
           <SkeletonPanel className="min-h-[24rem]" />
           <SkeletonPanel className="min-h-[24rem]" />
@@ -252,10 +274,10 @@ function DashboardPage() {
     : null
 
   return (
-    <main className="min-h-[calc(100vh-9rem)] bg-[radial-gradient(circle_at_top_left,rgba(214,154,78,0.16),transparent_28%),radial-gradient(circle_at_top_right,rgba(74,124,121,0.12),transparent_24%)] px-4 py-8 sm:py-10">
-      <section className="mx-auto flex w-full max-w-7xl flex-col gap-4">
-        <section className="overflow-hidden border border-border/80 bg-card shadow-[0_18px_60px_-28px_rgba(0,0,0,0.35)]">
-          <div className="flex flex-col gap-5 border-b border-border/80 bg-[linear-gradient(135deg,rgba(214,154,78,0.16),rgba(255,255,255,0)),linear-gradient(180deg,rgba(17,24,39,0.03),rgba(17,24,39,0))] px-5 py-5 sm:px-6">
+    <main className="min-h-[calc(100vh-5rem)] bg-[radial-gradient(circle_at_top_left,rgba(214,154,78,0.16),transparent_28%),radial-gradient(circle_at_top_right,rgba(74,124,121,0.12),transparent_24%)] px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
+      <section className="flex w-full flex-col gap-5">
+        <section className="overflow-hidden bg-[linear-gradient(135deg,rgba(214,154,78,0.16),rgba(255,255,255,0)),linear-gradient(180deg,rgba(17,24,39,0.03),rgba(17,24,39,0))] px-1 py-1">
+          <div className="flex flex-col gap-5 px-4 py-5 sm:px-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-3xl space-y-3">
                 <div className="inline-flex w-fit items-center gap-2 border border-border/80 bg-background/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
@@ -302,7 +324,7 @@ function DashboardPage() {
           </div>
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-[320px_360px_minmax(0,1fr)]">
+        <section className="grid gap-5 xl:grid-cols-[22rem_28rem_minmax(0,1fr)] xl:items-start">
           <aside className="space-y-4">
             <Panel>
               <div className="flex items-center justify-between gap-3 border-b border-border/80 px-5 py-4">
@@ -317,7 +339,7 @@ function DashboardPage() {
                   disabled={createInboxMutation.isPending}
                   onClick={() => {
                     setActionNotice(null)
-                    createInboxMutation.mutate()
+                    createInboxMutation.mutate({})
                   }}
                   size="sm"
                   type="button"
@@ -393,7 +415,7 @@ function DashboardPage() {
 
               {selectedInbox ? (
                 <div className="space-y-4 px-5 py-5">
-                  <div className="space-y-2 border border-border/80 bg-background/70 px-4 py-4">
+                  <div className="space-y-2 border border-border/70 bg-background/65 px-4 py-4">
                     <AddressRow label="Primary" value={getPrimaryInboxAddress(selectedInbox)} />
                     <AddressRow label="Default" value={`${selectedInbox.defaultLocalPart}@clankr.email`} />
                     <AddressRow
@@ -645,7 +667,7 @@ function DashboardPage() {
               ) : (
                 <div className="space-y-4 px-4 py-4 sm:px-5 sm:py-5">
                   <div className="grid gap-3 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)]">
-                    <div className="space-y-2 border border-border/80 bg-background/70 p-2">
+                    <div className="space-y-2 border border-border/70 bg-background/65 p-2">
                       <div className="flex items-center justify-between gap-3 border-b border-border/80 px-2 py-2">
                         <div>
                           <p className="text-sm font-semibold">Messages</p>
@@ -700,7 +722,7 @@ function DashboardPage() {
                       )}
                     </div>
 
-                    <div className="min-w-0 border border-border/80 bg-background/70">
+                    <div className="min-w-0 border border-border/70 bg-background/65">
                       <div className="flex items-center justify-between gap-3 border-b border-border/80 px-4 py-3">
                         <div>
                           <p className="text-sm font-semibold">Message detail</p>
@@ -823,7 +845,7 @@ function ComposePanel(props: {
           </p>
         </div>
 
-        <details className="border border-border/80 bg-background/60 px-4 py-3">
+        <details className="border border-border/70 bg-background/55 px-4 py-3">
           <summary className="cursor-pointer text-sm font-medium">Advanced fields</summary>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -869,7 +891,7 @@ function ComposePanel(props: {
         </div>
 
         {replySource ? (
-          <div className="border border-border/80 bg-background/70 px-4 py-3 text-sm text-muted-foreground">
+          <div className="border border-border/70 bg-background/60 px-4 py-3 text-sm text-muted-foreground">
             Reply target: {replySource.fromEmail} - {replySource.subject || '(no subject)'}
           </div>
         ) : null}
@@ -904,7 +926,7 @@ function MessageDetailPanel({ message }: { message: MessageDetail }) {
 
   return (
     <div className="space-y-4 px-4 py-4">
-      <div className="space-y-3 border border-border/80 bg-card px-4 py-4">
+      <div className="space-y-3 border border-border/70 bg-card/85 px-4 py-4">
         <div className="flex flex-wrap items-center gap-2">
           <StatusPill tone={message.direction === 'outbound' ? 'accent' : 'neutral'}>
             {message.direction}
@@ -941,7 +963,7 @@ function MessageDetailPanel({ message }: { message: MessageDetail }) {
         ) : null}
       </div>
 
-      <div className="border border-border/80 bg-background/80 px-4 py-4">
+      <div className="border border-border/70 bg-background/70 px-4 py-4">
         {hasHtml ? (
           <div
             className="prose prose-neutral dark:prose-invert max-w-none break-words prose-pre:overflow-x-auto"
@@ -956,7 +978,7 @@ function MessageDetailPanel({ message }: { message: MessageDetail }) {
         )}
       </div>
 
-      <details className="border border-border/80 bg-background/60 px-4 py-3 text-sm">
+      <details className="border border-border/70 bg-background/55 px-4 py-3 text-sm">
         <summary className="cursor-pointer font-medium">Delivery and storage metadata</summary>
         <div className="mt-4 space-y-2 text-muted-foreground">
           <MetadataRow label="Provider ID" value={message.providerMessageId || 'Unavailable'} />
@@ -973,12 +995,16 @@ function MessageDetailPanel({ message }: { message: MessageDetail }) {
 }
 
 function Panel({ children }: { children: ReactNode }) {
-  return <section className="overflow-hidden border border-border/80 bg-card shadow-[0_16px_40px_-28px_rgba(15,23,42,0.45)]">{children}</section>
+  return (
+    <section className="overflow-hidden border border-border/50 bg-card/82 backdrop-blur-sm shadow-[0_24px_70px_-38px_rgba(15,23,42,0.4)]">
+      {children}
+    </section>
+  )
 }
 
 function MetricCard(props: { hint: string; label: string; value: string }) {
   return (
-    <div className="border border-border/80 bg-background/80 px-4 py-3">
+    <div className="border border-border/60 bg-background/70 px-4 py-3 backdrop-blur-sm">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{props.label}</p>
       <p className="mt-2 truncate text-lg font-semibold tracking-tight">{props.value}</p>
       <p className="mt-1 truncate text-xs text-muted-foreground">{props.hint}</p>
@@ -1003,7 +1029,7 @@ function StatusPill(props: { children: ReactNode; tone: 'accent' | 'danger' | 'n
 
 function EmptyState(props: { body: string; title: string }) {
   return (
-    <div className="border border-dashed border-border/80 bg-background/50 px-4 py-6 text-center">
+    <div className="border border-dashed border-border/70 bg-background/45 px-4 py-6 text-center">
       <p className="text-sm font-semibold tracking-tight">{props.title}</p>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{props.body}</p>
     </div>
@@ -1025,7 +1051,7 @@ function MetadataRow(props: { label: string; value: string }) {
 
 function SkeletonPanel({ className }: { className?: string }) {
   return (
-    <div className={cn('border border-border/80 bg-card p-5', className)}>
+    <div className={cn('border border-border/50 bg-card/80 p-5 backdrop-blur-sm', className)}>
       <div className="space-y-3">
         <SkeletonLine className="w-2/5" />
         <SkeletonLine className="w-4/5" />
