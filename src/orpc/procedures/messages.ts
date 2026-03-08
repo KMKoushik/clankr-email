@@ -1,10 +1,10 @@
 import { ORPCError } from '@orpc/server'
-import { z } from 'zod'
 import {
   sendMessage,
   sendMessageInputSchema,
   sendMessageResultSchema,
   sendSignedInUserTestEmail,
+  sendTestEmailInputSchema,
   sendTestEmailResultSchema,
   SendMessageOwnershipError,
   SendMessageThreadNotFoundError,
@@ -75,10 +75,12 @@ export const messageRouter = {
       path: '/messages/send-test',
       summary: 'Send dashboard test email',
     })
-    .input(z.object({}).optional())
+    .input(sendTestEmailInputSchema)
     .output(sendTestEmailResultSchema)
-    .handler(async ({ context }) => {
+    .handler(async ({ context, input }) => {
       return sendSignedInUserTestEmail({
+        inboxId: input.inboxId,
+        userId: context.session.user.id,
         toEmail: context.session.user.email,
       })
     }),

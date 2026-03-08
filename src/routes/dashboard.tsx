@@ -317,10 +317,16 @@ function DashboardPage() {
               <div className="flex flex-col gap-3 lg:min-w-[34rem]">
                 <div className="flex justify-start lg:justify-end">
                   <Button
-                    disabled={sendTestEmailMutation.isPending}
+                    disabled={sendTestEmailMutation.isPending || !selectedInboxId}
                     onClick={() => {
                       setActionNotice(null)
-                      sendTestEmailMutation.mutate({})
+                      if (!selectedInboxId) {
+                        return
+                      }
+
+                      sendTestEmailMutation.mutate({
+                        inboxId: selectedInboxId,
+                      })
                     }}
                     size="sm"
                     type="button"
@@ -331,7 +337,7 @@ function DashboardPage() {
                     ) : (
                       <FlaskConical className="size-4" />
                     )}
-                    Send test email
+                    Send u_ test email
                   </Button>
                 </div>
 

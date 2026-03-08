@@ -89,7 +89,12 @@ export const sendTestEmailResultSchema = z.object({
   toEmail: z.string().email(),
 })
 
+export const sendTestEmailInputSchema = z.object({
+  inboxId: z.string().trim().min(1),
+})
+
 export type SendTestEmailResult = z.infer<typeof sendTestEmailResultSchema>
+export type SendTestEmailInput = z.input<typeof sendTestEmailInputSchema>
 
 type SendMessageStatusUpdate = {
   providerMessageId: string | null
@@ -119,10 +124,18 @@ export class SendMessageOwnershipError extends Error {}
 export class SendMessageThreadNotFoundError extends Error {}
 
 export async function sendSignedInUserTestEmail(params: {
+  inboxId: string
+  userId: string
   toEmail: string
 }): Promise<SendTestEmailResult> {
   const env = getWorkerEnv() as Pick<Env, 'EMAIL'>
-  const fromEmail = 'hello@clankr.email'
+  const inbox = await getInboxForUser(params.userId, params.inboxId)
+
+  if (!inbox || !inbox.isActive) {
+    throw new SendMessageOwnershipError('Inbox not found.')
+  }
+
+  const fromEmail = getDefaultInboxEmailAddress(inbox)
   const subject = 'Clankr test email'
 
   try {
@@ -485,6 +498,10 @@ function getInboxEmailAddress(inbox: typeof inboxes.$inferSelect) {
   const localPart = inbox.customLocalPart ?? inbox.defaultLocalPart
 
   return `${localPart}@clankr.email`
+}
+
+function getDefaultInboxEmailAddress(inbox: typeof inboxes.$inferSelect) {
+  return `${inbox.defaultLocalPart}@clankr.email`
 }
 
 function createInternetMessageId(messageId: string, fromEmail: string) {
