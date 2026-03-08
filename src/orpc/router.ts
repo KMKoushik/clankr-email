@@ -1,3 +1,4 @@
+import { apiKeyRouter } from './procedures/api-keys'
 import { healthProcedure } from './procedures/health'
 import { inboxRouter } from './procedures/inboxes'
 import { messageRouter } from './procedures/messages'
@@ -5,6 +6,7 @@ import { threadRouter } from './procedures/threads'
 import { webhookRouter } from './procedures/webhooks'
 
 export const router = {
+  apiKeys: apiKeyRouter,
   inboxes: inboxRouter,
   messages: messageRouter,
   system: {

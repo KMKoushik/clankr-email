@@ -32,7 +32,7 @@ export const inboxRouter = {
     .input(z.object({}).optional())
     .output(inboxSchema)
     .handler(async ({ context }) => {
-      const inbox = await createInboxForUser(context.session.user.id)
+      const inbox = await createInboxForUser(context.userId)
 
       return serializeInbox(inbox)
     }),
@@ -50,7 +50,7 @@ export const inboxRouter = {
     )
     .output(inboxSchema)
     .handler(async ({ context, input }) => {
-      const inbox = await getInboxForUser(context.session.user.id, input.inboxId)
+      const inbox = await getInboxForUser(context.userId, input.inboxId)
 
       if (!inbox) {
         throw new ORPCError('NOT_FOUND', {
@@ -69,7 +69,7 @@ export const inboxRouter = {
     })
     .output(z.array(inboxSchema))
     .handler(async ({ context }) => {
-      const inboxes = await listInboxesForUser(context.session.user.id)
+      const inboxes = await listInboxesForUser(context.userId)
 
       return inboxes.map(serializeInbox)
     }),
@@ -89,7 +89,7 @@ export const inboxRouter = {
     .output(inboxSchema)
     .handler(async ({ context, input }) => {
       try {
-        const inbox = await updateInboxAliasForUser(context.session.user.id, input.inboxId, input.alias)
+        const inbox = await updateInboxAliasForUser(context.userId, input.inboxId, input.alias)
 
         if (!inbox) {
           throw new ORPCError('NOT_FOUND', {

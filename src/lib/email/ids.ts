@@ -3,6 +3,7 @@ import { monotonicFactory } from 'ulid'
 const createUlid = monotonicFactory()
 
 export const ENTITY_PREFIXES = {
+  apiKey: 'ak',
   event: 'evt',
   inbox: 'in',
   message: 'em',
@@ -19,6 +20,10 @@ export function createPrefixedId(prefix: EntityPrefix) {
 
 export function createInboxId() {
   return createPrefixedId(ENTITY_PREFIXES.inbox)
+}
+
+export function createApiKeyId() {
+  return createPrefixedId(ENTITY_PREFIXES.apiKey)
 }
 
 export function createThreadId() {

@@ -14,10 +14,15 @@ type StoredObject = {
   body: Uint8Array
 }
 
+type TestStorageBinding = {
+  get: TestR2Bucket['get']
+  put: TestR2Bucket['put']
+}
+
 type TestHarnessEnv = Pick<Env, 'APP_DB'> & {
   EMAIL: Pick<SendEmail, 'send'>
   EMAIL_EVENTS: Pick<Queue<EmailEvent>, 'send'>
-  EMAIL_STORAGE: Pick<R2Bucket, 'put'>
+  EMAIL_STORAGE: TestStorageBinding
 }
 
 export class TestQueue<T = unknown> {

@@ -32,6 +32,27 @@ export const inboxes = sqliteTable(
   ],
 )
 
+export const apiKeys = sqliteTable(
+  'api_keys',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    name: text('name').notNull(),
+    keyHash: text('key_hash').notNull(),
+    keyPrefix: text('key_prefix').notNull(),
+    lastFour: text('last_four').notNull(),
+    lastUsedAt: integer('last_used_at', { mode: 'timestamp_ms' }),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }),
+    revokedAt: integer('revoked_at', { mode: 'timestamp_ms' }),
+    createdAt: createdAtColumn('created_at'),
+    updatedAt: updatedAtColumn('updated_at'),
+  },
+  (table) => [
+    index('api_keys_user_id_idx').on(table.userId),
+    uniqueIndex('api_keys_key_prefix_unique').on(table.keyPrefix),
+  ],
+)
+
 export const emailThreads = sqliteTable(
   'email_threads',
   {
